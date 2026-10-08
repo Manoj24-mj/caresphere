@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f5f8fc">
+  <title>CareSphere — Right Care, Right Place, Right Time</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #182c49;
+      --muted: #78879b;
+      --line: #e9eef5;
+      --canvas: #f5f8fc;
+      --white: #fff;
+      --blue: #356de5;
+      --blue-dark: #285bc6;
+      --teal: #22a98d;
+      --green: #1c9c70;
+      --purple: #8762d8;
+      --orange: #e99237;
+      --red: #e85b61;
+      --shadow: 0 12px 34px rgba(35, 62, 99, .07);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; background: var(--canvas); color: var(--ink); }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    .app { min-height: 100vh; }
+    .sidebar {
+      position: fixed; inset: 0 auto 0 0; z-index: 5; display: flex; width: 248px; flex-direction: column;
+      padding: 25px 17px 18px; background: var(--white); border-right: 1px solid var(--line);
+    }
+    .brand { display: flex; align-items: center; gap: 11px; padding: 0 9px 30px; color: var(--ink); text-decoration: none; }
+    .brand-mark { display: grid; width: 39px; height: 39px; place-items: center; border-radius: 13px; color: white; background: linear-gradient(145deg, #3a7de8, #25b69a); }
+    .brand-mark svg { width: 23px; height: 23px; }
+    .brand-name { font-size: 17px; font-weight: 760; letter-spacing: -.55px; }
+    .brand-name span { color: var(--blue); }
+    .brand-tagline { margin-top: 2px; color: #95a0ae; font-size: 9px; letter-spacing: .25px; }
+    .nav-caption { padding: 0 11px 10px; color: #a1adbb; font-size: 9px; font-weight: 750; letter-spacing: 1.25px; }
+    .nav-list { display: grid; gap: 4px; }
+    .nav-item { display: flex; width: 100%; min-height: 42px; align-items: center; gap: 12px; padding: 0 11px; border: 0; border-radius: 10px; background: transparent; color: #748298; text-align: left; font-size: 12px; font-weight: 600; transition: .18s ease; }
+    .nav-item:hover { background: #f5f8fd; color: var(--ink); }
+    .nav-item.active { background: #edf3ff; color: var(--blue); font-weight: 720; }
+    .nav-icon { display: grid; width: 18px; place-items: center; font-size: 16px; }
+    .nav-badge { margin-left: auto; padding: 3px 7px; border-radius: 8px; background: #ffeded; color: #dc6267; font-size: 9px; font-weight: 750; }
+    .side-spacer { flex: 1; }
+    .help-card { padding: 14px; border: 1px solid #e9effa; border-radius: 13px; background: linear-gradient(145deg, #f7faff, #f4fbfa); }
+    .help-card strong { display: block; margin-bottom: 5px; font-size: 11px; }
+    .help-card p { margin: 0 0 11px; color: var(--muted); font-size: 10px; line-height: 1.55; }
+    .help-card button { padding: 0; border: 0; background: none; color: var(--blue); font-size: 10px; font-weight: 720; }
+    .side-profile { display: flex; align-items: center; gap: 10px; margin-top: 17px; padding: 13px 5px 0; border-top: 1px solid var(--line); }
+    .avatar { display: grid; width: 34px; height: 34px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: #e9f0ff; color: #4169bf; font-size: 11px; font-weight: 750; }
+    .profile-name { font-size: 11px; font-weight: 700; }
+    .profile-role { margin-top: 2px; color: var(--muted); font-size: 9px; }
+    .profile-more { margin-left: auto; color: #9ba7b7; }
+    .main { min-height: 100vh; margin-left: 248px; }
+    .topbar { position: sticky; top: 0; z-index: 4; display: flex; height: 72px; align-items: center; gap: 18px; padding: 0 34px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.94); backdrop-filter: blur(12px); }
+    .mobile-brand { display: none; align-items: center; gap: 7px; font-size: 14px; font-weight: 760; }
+    .search { position: relative; display: flex; width: min(370px, 35vw); align-items: center; }
+    .search .search-icon { position: absolute; left: 13px; color: #a4afbd; font-size: 15px; }
+    .search input { width: 100%; height: 38px; padding: 0 14px 0 38px; border: 1px solid #edf0f5; border-radius: 9px; outline: none; background: #f9fafc; color: var(--ink); font-size: 11px; }
+    .search input:focus { border-color: #b9ccf7; background: white; }
+    .top-spacer { flex: 1; }
+    .role-switch { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 10px; white-space: nowrap; }
+    .role-switch select, .language { height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; background: white; color: var(--ink); font-size: 10px; outline: none; }
+    .icon-button { position: relative; display: grid; width: 36px; height: 36px; flex: 0 0 auto; place-items: center; border: 1px solid var(--line); border-radius: 9px; background: white; color: #687993; font-size: 15px; }
+    .notification-dot { position: absolute; top: 7px; right: 7px; width: 6px; height: 6px; border: 1px solid white; border-radius: 50%; background: var(--red); }
+    .content { width: min(1330px, 100%); margin: 0 auto; padding: 30px 34px 45px; }
+    .breadcrumbs { margin-bottom: 8px; color: #9ba7b5; font-size: 10px; }
+    h1 { margin: 0; font-size: clamp(21px, 2.2vw, 27px); letter-spacing: -.85px; }
+    .subheading { margin: 7px 0 0; color: var(--muted); font-size: 11px; }
+    .heading-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin-bottom: 23px; }
+    .date-pill { padding: 9px 12px; border: 1px solid var(--line); border-radius: 9px; background: white; color: #6d7b8e; font-size: 10px; white-space: nowrap; }
+    .welcome { position: relative; display: flex; min-height: 177px; overflow: hidden; align-items: center; justify-content: space-between; gap: 22px; padding: 27px 32px; border-radius: 16px; background: linear-gradient(108deg, #edf4ff 0%, #f1f7ff 59%, #ebf8f7 100%); }
+    .welcome::after { position: absolute; top: -74px; right: 85px; width: 230px; height: 230px; border: 1px solid rgba(62,119,219,.09); border-radius: 50%; content: ""; }
+    .welcome::before { position: absolute; top: -37px; right: 122px; width: 158px; height: 158px; border: 1px solid rgba(62,119,219,.1); border-radius: 50%; content: ""; }
+    .welcome-copy { position: relative; z-index: 1; }
+    .welcome-kicker { margin-bottom: 10px; color: #6486c7; font-size: 10px; font-weight: 760; letter-spacing: .9px; text-transform: uppercase; }
+    .welcome h2 { margin: 0; font-size: 21px; letter-spacing: -.6px; }
+    .welcome p { max-width: 410px; margin: 8px 0 17px; color: #74839a; font-size: 11px; line-height: 1.6; }
+    .button { display: inline-flex; min-height: 37px; align-items: center; justify-content: center; gap: 7px; padding: 0 14px; border: 0; border-radius: 8px; background: var(--blue); color: white; font-size: 10px; font-weight: 720; box-shadow: 0 4px 10px rgba(53,109,229,.16); transition: .18s ease; }
+    .button:hover { transform: translateY(-1px); background: var(--blue-dark); }
+    .button.secondary { border: 1px solid #e7edf5; background: white; color: #53647c; box-shadow: none; }
+    .button.emergency { background: #e95861; box-shadow: 0 4px 10px rgba(233,88,97,.2); }
+    .button.small { min-height: 31px; padding: 0 11px; font-size: 9px; }
+    .welcome-art { position: relative; z-index: 1; display: grid; width: 132px; height: 132px; flex: 0 0 auto; place-items: center; margin-right: 27px; border: 1px solid rgba(71,127,220,.11); border-radius: 50%; background: rgba(255,255,255,.54); color: #5391d6; }
+    .welcome-art .cross { display: grid; width: 68px; height: 68px; place-items: center; border-radius: 22px; background: linear-gradient(145deg, #4b8bea, #39bca4); color: white; font-size: 40px; font-weight: 300; box-shadow: 0 12px 25px rgba(58,138,205,.2); }
+    .section-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 25px 0 13px; }
+    .section-row h2 { margin: 0; font-size: 14px; letter-spacing: -.3px; }
+    .text-link { padding: 5px; border: 0; background: none; color: var(--blue); font-size: 10px; font-weight: 680; }
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 13px; }
+    .stat-card, .panel { border: 1px solid #edf0f5; border-radius: 13px; background: white; box-shadow: var(--shadow); }
+    .stat-card { padding: 15px; }
+    .stat-top { display: flex; align-items: center; justify-content: space-between; }
+    .stat-icon { display: grid; width: 31px; height: 31px; place-items: center; border-radius: 9px; background: #eff4ff; color: var(--blue); font-size: 15px; }
+    .stat-icon.teal { background: #eaf8f5; color: var(--teal); }
+    .stat-icon.purple { background: #f3efff; color: var(--purple); }
+    .stat-icon.orange { background: #fff4e9; color: var(--orange); }
+    .stat-trend { color: #61a78b; font-size: 9px; font-weight: 700; }
+    .stat-value { margin-top: 13px; font-size: 21px; font-weight: 760; letter-spacing: -.6px; }
+    .stat-label { margin-top: 3px; color: var(--muted); font-size: 9px; }
+    .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(260px, .92fr); gap: 16px; align-items: start; }
+    .panel { padding: 17px; }
+    .panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+    .panel-heading h3 { margin: 0; font-size: 12px; }
+    .panel-heading p { margin: 4px 0 0; color: var(--muted); font-size: 9px; }
+    .appointment { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid #edf1f7; border-radius: 10px; }
+    .doctor-photo { display: grid; width: 40px; height: 40px; flex: 0 0 auto; place-items: center; border-radius: 12px; background: linear-gradient(140deg, #e6f0ff, #def5f0); color: #527ec5; font-size: 13px; font-weight: 750; }
+    .appointment-main { min-width: 0; flex: 1; }
+    .appointment-main strong { display: block; font-size: 10px; }
+    .appointment-main span { display: block; margin-top: 4px; color: var(--muted); font-size: 9px; }
+    .appointment-time { color: #52657e; font-size: 9px; font-weight: 700; white-space: nowrap; }
+    .status { display: inline-flex; align-items: center; gap: 5px; padding: 5px 7px; border-radius: 20px; background: #eaf7f1; color: #338a68; font-size: 8px; font-weight: 720; white-space: nowrap; }
+    .status::before { width: 5px; height: 5px; border-radius: 50%; background: currentColor; content: ""; }
+    .status.warning { background: #fff4e7; color: #ca8135; }
+    .status.critical { background: #ffeded; color: #d45159; }
+    .service-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .service { display: grid; min-height: 88px; justify-items: start; padding: 12px; border: 1px solid #edf1f6; border-radius: 10px; background: white; text-align: left; transition: .16s ease; }
+    .service:hover { transform: translateY(-2px); border-color: #d7e3fa; box-shadow: 0 6px 16px rgba(35,62,99,.07); }
+    .service-icon { display: grid; width: 29px; height: 29px; place-items: center; border-radius: 9px; background: #edf3ff; color: var(--blue); font-size: 15px; }
+    .service:nth-child(2) .service-icon { background: #eaf8f5; color: var(--teal); }
+    .service:nth-child(3) .service-icon { background: #fff4e9; color: var(--orange); }
+    .service:nth-child(4) .service-icon { background: #f3efff; color: var(--purple); }
+    .service strong { margin-top: 8px; font-size: 9px; }
+    .service span:last-child { margin-top: 3px; color: var(--muted); font-size: 8px; }
+    .hospital-card { padding: 12px; border: 1px solid #edf1f6; border-radius: 10px; }
+    .hospital-top { display: flex; align-items: center; gap: 10px; }
+    .hospital-icon { display: grid; width: 36px; height: 36px; flex: 0 0 auto; place-items: center; border-radius: 10px; background: #eaf8f5; color: var(--teal); font-size: 17px; }
+    .hospital-name { flex: 1; font-size: 9px; font-weight: 730; }
+    .hospital-name span { display: block; margin-top: 4px; color: var(--muted); font-size: 8px; font-weight: 450; }
+    .resource-line { display: flex; justify-content: space-between; margin-top: 11px; color: #7d8999; font-size: 8px; }
+    .resource-line strong { color: #52647a; font-weight: 700; }
+    .meter { height: 5px; overflow: hidden; margin-top: 6px; border-radius: 5px; background: #edf1f6; }
+    .meter span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #49b997, #39ad87); }
+    .quick-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 13px; }
+    .quick-action { display: flex; min-height: 41px; align-items: center; justify-content: center; gap: 7px; border: 1px solid #e9eef6; border-radius: 9px; background: white; color: #596b82; font-size: 9px; font-weight: 680; }
+    .quick-action:hover { background: #f7f9fd; }
+    .quick-action.sos { border-color: #f9dedf; color: #db5960; }
+    .screen-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .module-card { display: flex; min-height: 90px; align-items: flex-start; gap: 13px; padding: 16px; border: 1px solid #edf0f5; border-radius: 13px; background: white; box-shadow: var(--shadow); }
+    .module-card h3 { margin: 1px 0 5px; font-size: 11px; }
+    .module-card p { margin: 0; color: var(--muted); font-size: 9px; line-height: 1.55; }
+    .module-card .status { margin-left: auto; }
+    .screen-note { grid-column: 1 / -1; padding: 14px 16px; border: 1px solid #e8eefa; border-radius: 11px; background: #f0f5ff; color: #627895; font-size: 10px; line-height: 1.6; }
+    .toast { position: fixed; right: 22px; bottom: 20px; z-index: 20; padding: 12px 16px; border-radius: 10px; background: #203653; color: white; font-size: 11px; box-shadow: 0 8px 22px rgba(24,44,73,.2); animation: appear .2s ease; }
+    @keyframes appear { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+    .modal-backdrop { position: fixed; inset: 0; z-index: 15; display: grid; place-items: center; padding: 16px; background: rgba(25,41,62,.38); }
+    .modal { width: min(430px, 100%); padding: 22px; border: 1px solid #edf0f5; border-radius: 16px; background: white; box-shadow: 0 24px 70px rgba(23,40,67,.2); }
+    .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .modal-head h2 { margin: 0; font-size: 17px; }
+    .modal-head p { margin: 6px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+    .close-button { width: 30px; height: 30px; border: 0; border-radius: 8px; background: #f3f6fa; color: #718097; font-size: 17px; }
+    .form-field { display: grid; gap: 6px; margin-top: 15px; color: #586a81; font-size: 10px; font-weight: 650; }
+    .form-field input, .form-field select { width: 100%; height: 38px; padding: 0 10px; border: 1px solid #e6ebf2; border-radius: 8px; outline: none; background: white; color: var(--ink); font-size: 10px; }
+    .form-field input:focus, .form-field select:focus { border-color: #afc5f4; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 19px; }
+    .emergency-info { margin-top: 15px; padding: 12px; border: 1px solid #f6e0e0; border-radius: 9px; background: #fff7f7; color: #9c5a5e; font-size: 10px; line-height: 1.55; }
+    .mobile-nav { display: none; }
+    .empty-state { padding: 36px 20px; border: 1px dashed #dbe4ef; border-radius: 12px; background: white; color: var(--muted); text-align: center; font-size: 11px; }
+
+    @media (max-width: 1050px) {
+      .sidebar { width: 216px; }
+      .main { margin-left: 216px; }
+      .topbar { gap: 11px; padding: 0 22px; }
+      .content { padding: 25px 22px 38px; }
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .dashboard-grid { grid-template-columns: minmax(0, 1.3fr) minmax(240px, .9fr); }
+    }
+    @media (max-width: 760px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; padding-bottom: 67px; }
+      .topbar { height: 61px; gap: 9px; padding: 0 15px; }
+      .mobile-brand { display: flex; }
+      .mobile-brand .brand-mark { width: 29px; height: 29px; border-radius: 9px; }
+      .mobile-brand .brand-mark svg { width: 18px; }
+      .search { width: auto; flex: 1; }
+      .search input { height: 35px; font-size: 10px; }
+      .role-switch { gap: 5px; }
+      .role-switch > span { display: none; }
+      .role-switch select { max-width: 112px; height: 33px; padding: 0 7px; font-size: 9px; }
+      .language { display: none; }
+      .icon-button { width: 33px; height: 33px; }
+      .content { padding: 21px 15px 30px; }
+      .heading-row { align-items: flex-start; margin-bottom: 17px; }
+      .date-pill { display: none; }
+      .welcome { min-height: 155px; padding: 21px; }
+      .welcome h2 { max-width: 300px; font-size: 18px; }
+      .welcome p { max-width: 285px; font-size: 10px; }
+      .welcome-art { width: 78px; height: 78px; margin-right: 2px; }
+      .welcome-art .cross { width: 48px; height: 48px; border-radius: 16px; font-size: 29px; }
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .service-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .service { padding: 10px 8px; }
+      .service strong { font-size: 8px; }
+      .mobile-nav { position: fixed; right: 0; bottom: 0; left: 0; z-index: 8; display: grid; grid-template-columns: repeat(5, 1fr); padding: 7px 5px max(7px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: rgba(255,255,255,.97); backdrop-filter: blur(10px); }
+      .mobile-nav .nav-item { min-height: 46px; flex-direction: column; justify-content: center; gap: 3px; padding: 3px; font-size: 8px; }
+      .mobile-nav .nav-icon { font-size: 15px; }
+    }
+    @media (max-width: 460px) {
+      .topbar { gap: 7px; padding: 0 10px; }
+      .mobile-brand .brand-name { display: none; }
+      .search input { padding-left: 32px; }
+      .search .search-icon { left: 10px; }
+      .role-switch select { max-width: 100px; }
+      .content { padding-right: 12px; padding-left: 12px; }
+      .welcome { padding: 18px 16px; }
+      .welcome-art { width: 59px; height: 59px; }
+      .welcome-art .cross { width: 39px; height: 39px; border-radius: 13px; font-size: 24px; }
+      .stats { gap: 9px; }
+      .stat-card { padding: 12px; }
+      .stat-value { font-size: 19px; }
+      .service-grid { gap: 6px; }
+      .appointment { flex-wrap: wrap; }
+      .screen-grid { grid-template-columns: 1fr; }
+      .screen-note { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <a class="brand" href="#" aria-label="CareSphere home">
+        <span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v18M3 12h18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></span>
+        <span><span class="brand-name">Care<span>Sphere</span></span><span class="brand-tagline">RIGHT CARE. RIGHT TIME.</span></span>
+      </a>
+      <div class="nav-caption">YOUR CARESPACE</div>
+      <nav class="nav-list" id="sidebarNav" aria-label="Main navigation"></nav>
+      <div class="side-spacer"></div>
+      <div class="help-card">
+        <strong>Need a little help?</strong>
+        <p>Our care team is here to help you find your way.</p>
+        <button type="button" data-action="help">Contact support&nbsp; →</button>
+      </div>
+      <div class="side-profile">
+        <div class="avatar">AM</div>
+        <div><div class="profile-name">Aarav Mehta</div><div class="profile-role" id="profileRole">Patient account</div></div>
+        <span class="profile-more">···</span>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="mobile-brand">
+          <span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v18M3 12h18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></span>
+          <span class="brand-name">Care<span>Sphere</span></span>
+        </div>
+        <label class="search"><span class="search-icon" aria-hidden="true">⌕</span><input id="searchInput" type="search" placeholder="Search care, doctors, services..." aria-label="Search CareSphere"></label>
+        <div class="top-spacer"></div>
+        <label class="role-switch"><span>Viewing as</span><select id="roleSelect" aria-label="Switch role">
+          <option value="patient">Patient</option><option value="doctor">Doctor</option><option value="hospital">Hospital staff</option><option value="ambulance">Ambulance staff</option><option value="blood">Blood bank staff</option><option value="government">Government official</option>
+        </select></label>
+        <select class="language" aria-label="Language"><option>EN</option><option>ಕನ್ನಡ</option><option>हिंदी</option></select>
+        <button class="icon-button" type="button" aria-label="Notifications" data-action="notifications">♧<span class="notification-dot"></span></button>
+        <button class="icon-button" type="button" aria-label="Emergency SOS" data-action="sos">✚</button>
+      </header>
+
+      <div class="content" id="content" aria-live="polite"></div>
+    </main>
+    <nav class="mobile-nav" id="mobileNav" aria-label="Mobile navigation"></nav>
+  </div>
+  <div id="overlays"></div>
+  <script>
+    const roleInfo = {
+      patient: { label: "Patient account", nav: [["Home","⌂"],["Find care","⌕"],["Appointments","▦"],["Health records","▤"],["My profile","◉"]] },
+      doctor: { label: "Care team", nav: [["Dashboard","⌂"],["My patients","♧"],["Appointments","▦"],["Prescriptions","▤"],["Referrals","↗"]] },
+      hospital: { label: "Hospital team", nav: [["Dashboard","⌂"],["Patients","♧"],["Resources","▦"],["Emergency","✚"],["Referrals","↗"],["Reports","▤"]] },
+      ambulance: { label: "Emergency response", nav: [["Dashboard","⌂"],["Emergency requests","✚"],["Active trips","↗"],["Hospital readiness","▦"],["Trip history","◷"]] },
+      blood: { label: "Blood bank team", nav: [["Dashboard","⌂"],["Blood stock","▤"],["Blood requests","✚"],["Donors","♧"],["Shortage alerts","⚑"]] },
+      government: { label: "Government official", nav: [["Command center","⌂"],["Hospitals","▦"],["Resources","▤"],["Emergency","✚"],["Schemes","◉"],["Analytics","↗"]] }
+    };
+    const patientServices = [
+      ["Find a doctor","Specialists near you","♧"], ["Book a visit","Choose a convenient time","▦"],
+      ["Medical records","Your health, in one place","▤"], ["Find a hospital","Care & resources nearby","✚"]
+    ];
+    const roleContent = {
+      doctor: { title: "Good morning, Dr. Priya", description: "Here’s your care team overview for today.", stats: [["12","Patients today","♧"],["08","Appointments","▦"],["03","Pending notes","▤"],["02","New referrals","↗"]], items: [["Today's appointments","8 scheduled visits · Next: 10:30 AM"],["Patient follow-ups","3 notes need your attention"],["Care team updates","2 new referrals are ready to review"],["Your availability","Accepting appointments until 4:30 PM"]] },
+      hospital: { title: "Hospital overview", description: "A shared view of your facility’s live resources.", stats: [["68%","General beds used","▦"],["45%","ICU beds used","✚"],["08/10","Doctors on duty","♧"],["76%","Medicine stock","▤"]], items: [["Bed availability","24 general beds available · 6 ICU beds available"],["Emergency load","12 patients currently in emergency"],["Pharmacy inventory","Medicine stock is stable · 2 items need review"],["Diagnostics","6 of 8 diagnostic services are available"]] },
+      ambulance: { title: "Emergency response", description: "Coordinate emergency requests and hospital readiness inside CareSphere.", stats: [["02","Open requests","✚"],["01","Active trip","↗"],["08 min","Average response","◷"],["04","Units available","▦"]], items: [["New emergency request","Priority: high · Central district · 2.4 km"],["Active trip","En route to District General Hospital · ETA 8 min"],["Recommended hospital","District General · ICU and emergency bed available"],["Fleet availability","4 response units are ready for dispatch"]] },
+      blood: { title: "Blood bank overview", description: "Manage blood availability and requests across the shared network.", stats: [["124","Units in stock","▤"],["08","Open requests","✚"],["03","Low-stock types","⚑"],["12","Donors this week","♧"]], items: [["O− negative","8 units available · Low-stock watch"],["O+ positive","32 units available · Normal"],["Urgent request","O− · 2 units · District General Hospital"],["Next donation camp","City Community Hall · Saturday, 9:00 AM"]] },
+      government: { title: "District health command center", description: "Connected healthcare resources across your district.", stats: [["18","Connected hospitals","▦"],["74%","Bed availability","▤"],["26","Active ambulances","✚"],["03","Supply alerts","⚑"]], items: [["Hospital network","18 facilities reporting · Last updated 2 min ago"],["Medicine supply watch","3 district stock levels need attention"],["Emergency activity","6 active incidents · 2 require coordination"],["Access to care","82% of facilities reporting full diagnostic services"]] }
+    };
+    let currentRole = "patient";
+    let activeNav = "Home";
+    let toastTimer;
+
+    function navMarkup(mobile = false) {
+      return roleInfo[currentRole].nav.map(([name, icon], index) =>
+        `<button class="nav-item ${activeNav === name ? "active" : ""}" type="button" data-nav="${name}" ${mobile && index === 2 && currentRole === "patient" ? 'data-label="Emergency"' : ""}><span class="nav-icon" aria-hidden="true">${mobile && index === 2 && currentRole === "patient" ? "✚" : icon}</span><span>${mobile && index === 2 && currentRole === "patient" ? "Emergency" : name}</span>${name === "Emergency" ? '<span class="nav-badge">2</span>' : ""}</button>`
+      ).join("");
+    }
+    function renderNav() {
+      document.getElementById("sidebarNav").innerHTML = navMarkup();
+      document.getElementById("mobileNav").innerHTML = navMarkup(true);
+      document.getElementById("profileRole").textContent = roleInfo[currentRole].label;
+    }
+    function sectionHeading(title, subtitle) {
+      return `<div class="heading-row"><div><div class="breadcrumbs">CareSphere&nbsp; / &nbsp;${title}</div><h1>${title}</h1><p class="subheading">${subtitle}</p></div><div class="date-pill">◷&nbsp; Thursday, October 8</div></div>`;
+    }
+    function statCards(stats) {
+      const colors = ["", "teal", "purple", "orange"];
+      return stats.map(([value, label, icon], index) => `<article class="stat-card"><div class="stat-top"><span class="stat-icon ${colors[index]}">${icon}</span><span class="stat-trend">${currentRole === "patient" ? "↗ 12%" : "● Live"}</span></div><div class="stat-value">${value}</div><div class="stat-label">${label}</div></article>`).join("");
+    }
+    function renderPatientHome() {
+      const serviceCards = patientServices.map(([name, desc, icon]) => `<button class="service" type="button" data-nav="${name}"><span class="service-icon">${icon}</span><strong>${name}</strong><span>${desc}</span></button>`).join("");
+      return `${sectionHeading("Your health dashboard", "A little care goes a long way. Here’s your health at a glance.")}
+        <section class="welcome"><div class="welcome-copy"><div class="welcome-kicker">YOUR HEALTH, CONNECTED</div><h2>Good morning, Aarav 👋</h2><p>Care that keeps everything in one place — from your next appointment to the people looking after you.</p><button class="button" type="button" data-action="book">＋&nbsp; Book an appointment</button></div><div class="welcome-art" aria-hidden="true"><div class="cross">+</div></div></section>
+        <div class="section-row"><h2>Your health snapshot</h2><button class="text-link" type="button" data-nav="Health records">View health records&nbsp; →</button></div>
+        <section class="stats">${statCards([["02","Upcoming appointments","▦"],["04","Health records","▤"],["O+","Blood group","♡"],["01","Care reminders","◷"]])}</section>
+        <div class="section-row"><h2>Care, made simple</h2><button class="text-link" type="button" data-nav="Find care">Explore all&nbsp; →</button></div>
+        <section class="service-grid">${serviceCards}</section>
+        <div class="section-row"><h2>Your care, connected</h2><button class="text-link" type="button" data-nav="Find care">Find care&nbsp; →</button></div>
+        <section class="dashboard-grid">
+          <article class="panel">
+            <div class="panel-heading"><div><h3>Your next appointment</h3><p>One less thing to worry about</p></div><button class="text-link" type="button" data-nav="Appointments">See all&nbsp; →</button></div>
+            <div class="appointment"><div class="doctor-photo">DR</div><div class="appointment-main"><strong>Dr. Priya Sharma</strong><span>Cardiology · District General Hospital</span></div><div class="appointment-time">Tomorrow, 10:30 AM</div><span class="status">Confirmed</span></div>
+            <div class="section-row" style="margin:19px 0 11px"><h2 style="font-size:11px">Quick access</h2></div>
+            <div class="service-grid">${serviceCards}</div>
+          </article>
+          <article class="panel"><div class="panel-heading"><div><h3>Care near you</h3><p>Connected resources in your area</p></div><span class="status">Live</span></div>
+            <div class="hospital-card"><div class="hospital-top"><div class="hospital-icon">✚</div><div class="hospital-name">District General Hospital<span>Government hospital · 2.4 km away</span></div><span class="status">Open</span></div><div class="resource-line"><span>General beds available</span><strong>68%</strong></div><div class="meter"><span style="width:68%"></span></div><div class="resource-line"><span>Emergency waiting time</span><strong>~18 min</strong></div></div>
+            <div class="quick-row"><button class="quick-action" type="button" data-nav="Find care">⌕&nbsp; Find care</button><button class="quick-action sos" type="button" data-action="sos">✚&nbsp; Emergency SOS</button></div>
+          </article>
+        </section>`;
+    }
+    function renderRoleDashboard() {
+      const data = roleContent[currentRole];
+      const heading = sectionHeading(data.title, data.description);
+      const rows = data.items.map((item, index) => `<article class="module-card"><span class="stat-icon ${["","teal","purple","orange"][index]}">${["▦","♧","✚","▤"][index]}</span><div><h3>${item[0]}</h3><p>${item[1]}</p></div><span class="status ${index === 2 ? "warning" : ""}">${index === 2 ? "Review" : "Live"}</span></article>`).join("");
+      return `${heading}<section class="stats">${statCards(data.stats)}</section><div class="section-row"><h2>Today at a glance</h2><button class="text-link" type="button" data-action="refresh">Updated just now&nbsp; ↻</button></div><section class="screen-grid">${rows}<div class="screen-note"><strong>One CareSphere network.</strong> Patients, clinicians, hospitals, emergency teams, blood banks and public health teams share the right information through one connected platform.</div></section>`;
+    }
+    function renderModule(title) {
+      const descriptions = {
+        "Find care": ["Find care that fits your needs", "Explore connected doctors, hospitals, pharmacies and diagnostic services near you."],
+        "Find a doctor": ["Find a doctor", "Browse available care teams and request an appointment."],
+        "Book a visit": ["Book an appointment", "Choose a care team and a time that works for you."],
+        "Find a hospital": ["Find a hospital", "Compare nearby hospitals and the resources they report in CareSphere."],
+        "Appointments": ["Your appointments", "Keep track of upcoming and past visits with your care team."],
+        "Health records": ["Your health records", "Your medical information, connected and accessible when you need it."],
+        "My profile": ["Your profile", "Manage your health details, emergency contacts and preferences."],
+        "Emergency": ["Emergency coordination", "CareSphere connects your request with nearby response teams and hospital resources."],
+        "Emergency requests": ["Emergency requests", "Incoming and active requests for your response unit."],
+        "Blood stock": ["Blood stock", "View shared blood inventory and availability across the network."],
+        "Command center": ["District health command center", "A live overview of connected care resources in your district."]
+      };
+      const [heading, text] = descriptions[title] || [title, `View and manage ${title.toLowerCase()} in the shared CareSphere network.`];
+      const emergencies = title.toLowerCase().includes("emergency");
+      return `${sectionHeading(heading, text)}<section class="screen-grid">
+        <article class="module-card"><span class="stat-icon">⌕</span><div><h3>Connected services</h3><p>Browse verified care providers and resources in your area.</p></div><span class="status">Available</span></article>
+        <article class="module-card"><span class="stat-icon teal">▦</span><div><h3>Shared availability</h3><p>Availability is reported by participating CareSphere providers.</p></div><span class="status">Live</span></article>
+        <article class="module-card"><span class="stat-icon purple">✦</span><div><h3>CareSphere intelligence</h3><p>Helpful, AI-assisted information to support your next step.</p></div><span class="status">Assist</span></article>
+        <article class="module-card"><span class="stat-icon orange">♧</span><div><h3>Connected care team</h3><p>Keep patients and authorized care teams on the same page.</p></div><span class="status">Connected</span></article>
+        ${emergencies ? '<div class="screen-note"><strong>Emergency services:</strong> If someone is in immediate danger, call your local emergency number. This UI prototype does not dispatch real emergency services.</div>' : '<div class="screen-note">This is a UI prototype with sample information. Connected services and live data are illustrative and are not backed by a healthcare system.</div>'}
+        </section><div class="section-row"><h2>Take the next step</h2></div><button class="button ${emergencies ? "emergency" : ""}" type="button" data-action="${emergencies ? "sos" : "book"}">${emergencies ? "✚&nbsp; Start emergency request" : "＋&nbsp; " + (heading.toLowerCase().includes("appointment") ? "Request an appointment" : "Explore connected care")}</button>`;
+    }
+    function render() {
+      renderNav();
+      const content = document.getElementById("content");
+      if (currentRole === "patient" && activeNav === "Home") content.innerHTML = renderPatientHome();
+      else if (activeNav === "Dashboard" || activeNav === "Command center") content.innerHTML = renderRoleDashboard();
+      else content.innerHTML = renderModule(activeNav);
+    }
+    function showToast(message) {
+      const overlays = document.getElementById("overlays");
+      overlays.innerHTML = `<div class="toast" role="status">${message}</div>`;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { overlays.innerHTML = ""; }, 2600);
+    }
+    function openModal(kind) {
+      const emergency = kind === "sos";
+      document.getElementById("overlays").innerHTML = `<div class="modal-backdrop" data-dismiss="true"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-head"><div><h2 id="modalTitle">${emergency ? "Emergency assistance" : "Request an appointment"}</h2><p>${emergency ? "Your request stays in CareSphere and is shared with the response team." : "Choose a care team and preferred time to get started."}</p></div><button class="close-button" type="button" aria-label="Close" data-action="close">×</button></div>
+        ${emergency ? '<div class="emergency-info"><strong>Prototype only — no real emergency services are contacted.</strong><br>If this is a real emergency, please call your local emergency number.</div><label class="form-field">What kind of help is needed?<select><option>Medical emergency</option><option>Ambulance support</option><option>Urgent hospital care</option></select></label><label class="form-field">Your location<input value="Near Central District" aria-label="Your location"></label><div class="modal-actions"><button class="button secondary" type="button" data-action="close">Cancel</button><button class="button emergency" type="button" data-action="confirm-emergency">Continue</button></div>' :
+        '<label class="form-field">Choose a care team<select><option>Dr. Priya Sharma · Cardiology</option><option>Dr. Kiran Rao · General medicine</option><option>Any available doctor</option></select></label><label class="form-field">Preferred date<input type="date" value="2026-10-09"></label><label class="form-field">Preferred time<select><option>10:30 AM</option><option>11:00 AM</option><option>2:00 PM</option></select></label><div class="modal-actions"><button class="button secondary" type="button" data-action="close">Cancel</button><button class="button" type="button" data-action="confirm-booking">Request appointment</button></div>'}
+        </section></div>`;
+    }
+    document.addEventListener("click", event => {
+      const target = event.target.closest("button, [data-dismiss]");
+      if (!target) return;
+      if (target.matches("[data-dismiss]") && event.target === target) { document.getElementById("overlays").innerHTML = ""; return; }
+      if (target.dataset.nav) {
+        const label = target.dataset.label || target.dataset.nav;
+        if (label === "Emergency") { openModal("sos"); return; }
+        activeNav = target.dataset.nav;
+        render();
+      } else if (target.dataset.action === "book") openModal("book");
+      else if (target.dataset.action === "sos") openModal("sos");
+      else if (target.dataset.action === "close") document.getElementById("overlays").innerHTML = "";
+      else if (target.dataset.action === "confirm-booking") { document.getElementById("overlays").innerHTML = ""; showToast("Appointment request saved in this prototype."); }
+      else if (target.dataset.action === "confirm-emergency") { document.getElementById("overlays").innerHTML = ""; showToast("Prototype request previewed — no services were contacted."); }
+      else if (target.dataset.action === "notifications") showToast("You’re all caught up on notifications.");
+      else if (target.dataset.action === "help") showToast("CareSphere support is here to help.");
+      else if (target.dataset.action === "refresh") showToast("Your dashboard is up to date.");
+    });
+    document.getElementById("roleSelect").addEventListener("change", event => {
+      currentRole = event.target.value;
+      activeNav = roleInfo[currentRole].nav[0][0];
+      render();
+    });
+    document.getElementById("searchInput").addEventListener("keydown", event => {
+      if (event.key === "Enter" && event.target.value.trim()) {
+        const query = event.target.value.trim();
+        activeNav = currentRole === "patient" ? "Find care" : roleInfo[currentRole].nav[0][0];
+        render();
+        showToast(`Showing CareSphere results for “${query}”.`);
+      }
+    });
+    render();
+  </script>
+</body>
+</html>
