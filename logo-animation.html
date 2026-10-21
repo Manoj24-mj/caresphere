@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#081a32">
+  <link rel="icon" type="image/svg+xml" href="assets/caresphere-app-icon.svg">
+  <title>CareSphere — Right Care, Right Place, Right Time</title>
+  <script src="assets/localization.js" defer></script>
+  <!-- Keep page structure, visual styling, and interaction logic in separate files. -->
+  <link rel="stylesheet" href="assets/logo-animation.css">
+</head>
+<body>
+  <main class="experience" id="experience">
+    <button class="skip" id="skip" type="button">Skip animation</button>
+    <section class="animation" id="animation" aria-label="CareSphere network animation">
+      <div class="eyebrow">A connected healthcare ecosystem</div>
+      <div class="stage" aria-hidden="true">
+        <svg class="connections" viewBox="0 0 290 290">
+          <circle cx="145" cy="145" r="119" pathLength="1"/>
+          <path pathLength="1" d="M145 20v125"/><path pathLength="1" d="m238 58-93 87"/><path pathLength="1" d="M270 145H145"/><path pathLength="1" d="m236 235-91-90"/><path pathLength="1" d="M145 270V145"/><path pathLength="1" d="m53 235 92-90"/><path pathLength="1" d="M20 145h125"/><path pathLength="1" d="m52 58 93 87"/>
+          <circle class="pulse" cx="145" cy="26" r="2.4"/><circle class="pulse second" cx="145" cy="26" r="1.7"/>
+        </svg>
+        <img class="mark" src="assets/caresphere-symbol.svg" alt="">
+        <span class="node top" data-symbol="P">PEOPLE</span><span class="node topright" data-symbol="H">HOSPITAL</span>
+        <span class="node right" data-symbol="D">DOCTORS</span><span class="node bottomright" data-symbol="A">AMBULANCE</span>
+        <span class="node bottom" data-symbol="B">BLOOD</span><span class="node bottomleft" data-symbol="Rx">MEDICINES</span>
+        <span class="node topleft" data-symbol="G">PUBLIC CARE</span>
+      </div>
+      <p class="caption" aria-live="polite"><span class="initial">Bringing people and care together</span><span class="final">One connection. A world of care.</span></p>
+    </section>
+    <section class="welcome" id="welcome" aria-label="Welcome to CareSphere" aria-hidden="true">
+      <div class="lockup"><img class="symbol" src="assets/caresphere-symbol.svg" alt="CareSphere connected healthcare mark"><div class="wordmark">Care<span>Sphere</span></div></div>
+      <p class="tagline">Right Care, Right Place, Right Time.</p>
+      <div class="divider" aria-hidden="true"></div>
+      <p class="message">One platform. Many paths to better care.</p>
+      <label class="welcome-language">Choose your language
+        <select data-language aria-label="Choose your language">
+          <option value="en">English</option><option value="kn">ಕನ್ನಡ</option><option value="hi">हिंदी</option>
+        </select>
+      </label>
+      <button class="continue" id="continue" type="button">Continue <span class="arrow" aria-hidden="true">→</span></button>
+      <div class="trust">Secure · Connected · Intelligent Healthcare</div>
+    </section>
+  </main>
+  <script src="assets/logo-animation.js" defer></script>
+</body>
+</html>

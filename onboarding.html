@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f8fc">
+  <link rel="icon" type="image/svg+xml" href="assets/caresphere-app-icon.svg">
+  <script src="assets/localization.js" defer></script>
+  <title>CareSphere — Create your profile</title>
+  <style>
+    :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#182c49;background:#f5f8fc;font-synthesis:none;text-rendering:optimizeLegibility}
+    *{box-sizing:border-box}body{min-width:0;min-height:100vh;margin:0}button,input,select,textarea{font:inherit}button{cursor:pointer}
+    .shell{width:min(100%,1120px);min-height:100vh;margin:auto;padding:22px 30px 40px}
+    .header{display:flex;min-height:48px;align-items:center;justify-content:space-between;gap:15px}
+    .header-actions{display:flex;align-items:center;gap:12px}
+    .skip-setup{min-height:36px;padding:0 12px;border:1px solid #dfe7f0;border-radius:9px;background:#fff;color:#526883;font-size:10px;font-weight:680}
+    .skip-setup:hover{border-color:#b9cbea;background:#f8faff}.skip-setup:focus-visible{outline:3px solid rgba(53,109,229,.35);outline-offset:2px}
+    .brand{display:inline-flex;align-items:center;gap:9px;color:#182c49;text-decoration:none}.brand img{width:35px;height:35px}.brand strong{font-size:15px;letter-spacing:-.4px}.brand strong span{color:#356de5}
+    .security{display:flex;align-items:center;gap:7px;color:#74849a;font-size:10px}.security span{display:grid;width:25px;height:25px;place-items:center;border-radius:8px;background:#eaf7f3;color:#269475}
+    .content{width:min(100%,900px);margin:38px auto 0}.content.role-picker{width:min(100%,990px)}
+    .kicker{margin-bottom:9px;color:#3977d7;font-size:10px;font-weight:760;letter-spacing:1px;text-transform:uppercase}
+    h1{margin:0;color:#1a2e49;font-size:clamp(23px,3vw,31px);letter-spacing:-.8px;line-height:1.2}
+    .intro{max-width:600px;margin:8px 0 0;color:#718098;font-size:12px;line-height:1.6}
+    .role-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:23px}
+    .role{position:relative;display:flex;min-height:139px;flex-direction:column;align-items:flex-start;padding:14px;border:1px solid #e8edf4;border-radius:13px;background:#fff;color:#182c49;text-align:left;transition:.16s ease}
+    .role:hover{transform:translateY(-2px);border-color:#cad8f1;box-shadow:0 8px 22px rgba(35,62,99,.07)}
+    .role[aria-checked="true"]{border:1.5px solid #4c81e0;background:#f5f8ff;box-shadow:0 0 0 3px rgba(53,109,229,.09)}
+    .role:focus-visible,.primary:focus-visible,.back:focus-visible,.secondary:focus-visible{outline:3px solid rgba(53,109,229,.4);outline-offset:2px}
+    .role-icon{display:grid;width:34px;height:34px;place-items:center;border-radius:10px;background:#edf3ff;color:#3972d1;font-size:17px}
+    .role:nth-child(3n+2) .role-icon{background:#eaf8f5;color:#219981}.role:nth-child(3n) .role-icon{background:#f2efff;color:#8160d1}
+    .role-name{margin-top:9px;font-size:11px;font-weight:740}.role-desc{margin-top:5px;color:#79879a;font-size:9px;line-height:1.45}
+    .selected-mark{position:absolute;top:12px;right:12px;display:none;width:19px;height:19px;place-items:center;border-radius:50%;background:#356de5;color:#fff;font-size:11px}
+    .role[aria-checked="true"] .selected-mark{display:grid}
+    .actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:19px}
+    .action-group{display:flex;align-items:center;gap:8px}
+    .back,.secondary{display:inline-flex;min-height:42px;align-items:center;justify-content:center;gap:7px;padding:0 12px;border:0;border-radius:9px;background:transparent;color:#60728a;font-size:10px;font-weight:650}
+    .back:hover{background:#edf2f8}.secondary{border:1px solid #e3eaf2;background:#fff}
+    .primary{display:inline-flex;min-height:43px;align-items:center;justify-content:center;gap:9px;padding:0 16px;border:0;border-radius:9px;background:linear-gradient(105deg,#3476dc,#2d81c2 60%,#249c91);color:#fff;font-size:10px;font-weight:710;box-shadow:0 5px 14px rgba(47,120,183,.16);transition:transform .16s ease}
+    .primary:hover{transform:translateY(-1px)}.primary:disabled{cursor:not-allowed;opacity:.48;transform:none}
+    .footnote{margin:12px 0 0;color:#8795a6;font-size:9px;line-height:1.55}
+    .progress{margin:24px 0 25px}.progress-copy{display:flex;justify-content:space-between;gap:10px;margin-bottom:9px;color:#687a91;font-size:10px}.progress-copy strong{color:#334967}
+    .track{height:5px;overflow:hidden;border-radius:8px;background:#e7edf5}.track span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#3b78dd,#32b39b);transition:width .3s ease}
+    .wizard{display:grid;grid-template-columns:minmax(0,1fr) 235px;gap:20px;align-items:start}
+    .panel{min-width:0;padding:22px;border:1px solid #e9eef4;border-radius:15px;background:#fff;box-shadow:0 10px 30px rgba(35,62,99,.055)}
+    .panel h2{margin:0;color:#1d324e;font-size:17px;letter-spacing:-.3px}.step-description{margin:6px 0 18px;color:#7a879a;font-size:10px;line-height:1.55}
+    .fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px 12px}
+    .field{display:grid;min-width:0;align-content:start;gap:6px;color:#4c5f78;font-size:10px;font-weight:650}.field.full{grid-column:1/-1}
+    .control{width:100%;min-height:40px;padding:0 10px;border:1px solid #e3eaf2;border-radius:8px;outline:none;background:#fff;color:#253b58;font-size:10px;font-weight:450}
+    textarea.control{min-height:72px;padding:9px 10px;resize:vertical}.control:focus{border-color:#91b0ed;box-shadow:0 0 0 3px rgba(53,109,229,.09)}
+    .control:disabled{background:#f4f7fa;color:#77869b}.hint{color:#8995a6;font-size:9px;font-weight:450;line-height:1.5}
+    .age{display:flex;min-height:40px;align-items:center;padding:0 10px;border:1px solid #e8edf3;border-radius:8px;background:#f7f9fc;color:#586d86;font-size:10px}
+    .chips{display:flex;flex-wrap:wrap;gap:7px}.chip{display:inline-flex;min-height:32px;align-items:center;gap:6px;padding:0 8px;border:1px solid #e4eaf2;border-radius:8px;background:#fff;color:#596d85;font-size:9px;font-weight:500}
+    .chip:has(input:checked){border-color:#9bb8ef;background:#f2f6ff;color:#315fae}.chip input,.consent input{margin:0;accent-color:#356de5}
+    .note,.verification,.privacy{padding:10px 11px;border-radius:9px;font-size:9px;line-height:1.6}
+    .note{grid-column:1/-1;border:1px solid #e7eef9;background:#f5f8fe;color:#637792}
+    .verification{grid-column:1/-1;border:1px solid #f0e6cf;background:#fffaf0;color:#866c3b}
+    .badge{display:inline-flex;align-items:center;gap:5px;padding:5px 7px;border:1px solid #f0e0bf;border-radius:20px;background:#fff8e9;color:#a47728;font-size:8px;font-weight:710}
+    .conditional[hidden]{display:none}.conditional{display:contents}
+    .aside{padding:16px;border:1px solid #e8eef5;border-radius:13px;background:linear-gradient(150deg,#f1f6ff,#effaf7)}
+    .aside-icon{display:grid;width:31px;height:31px;place-items:center;border-radius:9px;background:#fff;color:#4380d5;font-size:15px}
+    .aside h3{margin:12px 0 5px;font-size:11px}.aside p{margin:0;color:#74849a;font-size:9px;line-height:1.65}
+    .aside ul{display:grid;gap:8px;margin:13px 0 0;padding:0;list-style:none}.aside li{display:flex;gap:7px;color:#63758b;font-size:9px}.aside li span{color:#359c7d}
+    .review{display:grid;gap:9px}.review-card{padding:12px;border:1px solid #edf0f5;border-radius:10px}
+    .review-head{display:flex;align-items:center;justify-content:space-between;gap:9px;margin-bottom:9px;color:#405570;font-size:10px;font-weight:700}
+    .edit{padding:4px 6px;border:0;border-radius:5px;background:#f0f5ff;color:#3972d1;font-size:9px;font-weight:670}
+    .review-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px}
+    .review-value span{display:block;color:#909cad;font-size:8px}.review-value strong{display:block;margin-top:3px;color:#455a73;font-size:9px;font-weight:620;overflow-wrap:anywhere}
+    .privacy{border:1px solid #e6edf5;background:#f7f9fc;color:#6a7c91}.consents{display:grid;gap:11px;margin-top:14px}
+    .consent{display:flex;align-items:flex-start;gap:9px;color:#596e84;font-size:9px;line-height:1.55}.consent input{margin-top:2px}
+    .error{min-height:15px;margin-top:8px;color:#c45057;font-size:9px}
+    .created{width:min(100%,630px);margin:48px auto;padding:34px;border:1px solid #e6edf4;border-radius:18px;background:#fff;text-align:center;box-shadow:0 14px 42px rgba(35,62,99,.07)}
+    .created-icon{display:grid;width:56px;height:56px;place-items:center;margin:0 auto 17px;border-radius:17px;background:#eaf8f2;color:#209870;font-size:24px}
+    .created-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:21px 0;text-align:left}
+    .created-details div{padding:11px;border:1px solid #edf0f5;border-radius:9px}.created-details span{display:block;color:#8996a7;font-size:8px}.created-details strong{display:block;margin-top:5px;color:#425872;font-size:10px}
+    @media(max-width:760px){.shell{padding:16px 15px 28px}.content,.content.role-picker{margin-top:27px}.role-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:18px}.role{min-height:139px;padding:11px}.wizard{grid-template-columns:1fr;gap:11px}.aside{display:grid;grid-template-columns:32px 1fr;column-gap:10px;padding:12px}.aside-icon{grid-row:span 2}.aside h3{align-self:end;margin:0 0 3px}.aside p{grid-column:2}.aside ul{display:none}}
+    @media(max-width:460px){.shell{padding-right:12px;padding-left:12px}.header{gap:8px}.header-actions{gap:7px}.security{font-size:0}.security span{font-size:12px}.skip-setup{min-height:34px;padding:0 9px;font-size:9px}.content,.content.role-picker{margin-top:22px}.role-grid{gap:8px}.role{min-height:145px;padding:10px}.role-name{font-size:10px}.role-desc{font-size:8px}.panel{padding:16px 12px}.fields{gap:11px 8px}.field{font-size:9px}.control{padding:0 8px}.wizard-actions{position:sticky;bottom:0;z-index:2;margin:0 -12px -16px;padding:9px 12px max(10px,env(safe-area-inset-bottom));border-top:1px solid #edf0f5;background:rgba(255,255,255,.97);backdrop-filter:blur(8px)}.actions{gap:5px}.primary,.back,.secondary{min-height:40px;padding-right:9px;padding-left:9px;font-size:9px}.review-grid{grid-template-columns:1fr 1fr}.created{margin:28px auto;padding:24px 15px}}
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+    :root{color:#183149;background:#f6fafb;font-size:16px}
+    body{color:#183149;font-size:16px;line-height:1.55}
+    :focus-visible{outline:3px solid #276fa9;outline-offset:3px}
+    .shell{padding-top:20px}
+    .header{min-height:58px}
+    .brand strong{font-size:18px}
+    .security,.intro,.field,.review-head{color:#40596c;font-size:14px}
+    .content{margin-top:36px}
+    h1{font-size:clamp(28px,3vw,36px);letter-spacing:-.45px;line-height:1.25}
+    .intro{max-width:720px;line-height:1.65}
+    .role-grid{gap:15px;margin-top:25px}
+    .role{min-height:170px;padding:18px;border-radius:16px}
+    .role:hover{transform:none}
+    .role-icon{width:46px;height:46px;font-size:23px}
+    .role-name{font-size:16px}
+    .role-desc{color:#40596c;font-size:14px;line-height:1.55}
+    .primary,.back,.secondary,.skip-setup{min-height:48px;font-size:14px}
+    .panel{padding:25px;border-radius:17px}
+    .panel h2{font-size:23px}
+    .step-description,.hint,.aside p,.aside li,.footnote{color:#40596c;font-size:13px}
+    .field{font-size:14px}
+    .control{min-height:48px;font-size:15px}
+    textarea.control{min-height:104px}
+    .chips{gap:10px}
+    .chip{min-height:48px;padding:0 13px;color:#29495d;font-size:14px}
+    .note,.verification,.privacy{font-size:13px}
+    @media(max-width:760px){.role-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.role{min-height:170px}.wizard{grid-template-columns:1fr}.aside{display:block}.aside ul{display:grid}}
+    @media(max-width:460px){.role-grid{grid-template-columns:1fr}.role{min-height:0;padding:16px}.shell{padding-right:15px;padding-left:15px}.content,.content.role-picker{margin-top:23px}.panel{padding:19px 15px}.actions{align-items:stretch;flex-wrap:wrap}.primary,.back,.secondary{min-height:48px;padding-right:13px;padding-left:13px;font-size:14px}.field{font-size:14px}.control{font-size:15px}.aside ul{display:none}}
+    @media(max-width:460px){
+      .header{display:grid;grid-template-columns:minmax(0,1fr) auto;row-gap:8px}
+      .header-actions{min-width:0}
+      .header>.caresphere-language{grid-column:2;grid-row:2;justify-self:end;max-width:100%;min-height:38px;font-size:14px}
+      .security{font-size:0}
+      .security span{flex:0 0 25px;font-size:12px}
+      .fields{grid-template-columns:minmax(0,1fr)}
+      .field.full{grid-column:auto}
+      .control{min-width:0}
+      input[type="file"].control{overflow:hidden;font-size:12px}
+      input[type="file"].control::file-selector-button{max-width:55%;padding:6px;font:inherit}
+      .wizard-actions{flex-direction:column-reverse}
+      .wizard-actions>.back{align-self:flex-start}
+      .wizard-actions .action-group{width:100%;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr)}
+      .wizard-actions .action-group>button{min-width:0;padding-right:6px;padding-left:6px;font-size:clamp(11px,3.8vw,14px)}
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="header">
+      <a class="brand" href="logo-animation.html"><img src="assets/caresphere-symbol.svg" alt=""><strong>Care<span>Sphere</span></strong></a>
+      <div class="header-actions"><button class="skip-setup" id="skipSetup" type="button" hidden>Skip this step</button><div class="security"><span aria-hidden="true">✓</span> One connected CareSphere account</div></div>
+    </header>
+    <main class="content roles" id="content" aria-live="polite"></main>
+  </div>
+  <script>
+    const roleList=[
+      ["patient","◉","Patient / Citizen","Find care, manage your health information, and connect with doctors, hospitals, medicines and emergency support."],
+      ["doctor","✚","Doctor","Manage care, appointments, prescriptions, records, referrals and telemedicine."],
+      ["nurse","♡","Nurse / Medical Staff","Coordinate patient care, ward tasks, shifts and emergency support."],
+      ["hospital","▦","Hospital Staff","Coordinate patients, beds, doctors, resources, inventory and reports."],
+      ["ambulance","↗","Ambulance Staff","Coordinate emergency requests, response, navigation and patient transfers."],
+      ["blood","◉","Blood Bank Staff","Coordinate blood availability, requests, reservations and stock updates."],
+      ["supplier","▤","Pharmacy / Medical Supplier","Manage medicine supply, inventory, hospital orders and deliveries."],
+      ["government","⌂","Government Healthcare Staff","Monitor authorized healthcare resources, facilities, schemes and analytics."],
+      ["admin","⚙","System Administrator","Manage verified system accounts, permissions, security and audit settings."]
+    ];
+    const steps=[
+      ["Basic information","A few details to create your CareSphere account."],
+      ["Your location","Choose your location in India to find relevant care."],
+      ["Role details","Information specific to your CareSphere role."],
+      ["Medical & professional","Sensitive health or professional information."],
+      ["Emergency & additional","Emergency contacts and role-specific preferences."],
+      ["Consent & privacy","Understand how your information is used."],
+      ["Review profile","Check your information before creating your profile."],
+      ["Profile created","Your unified CareSphere profile is ready."]
+    ];
+    const states=["Andhra Pradesh","Delhi","Goa","Gujarat","Karnataka","Kerala","Maharashtra","Tamil Nadu","Telangana","Uttar Pradesh","West Bengal","Other"];
+    const districts={Karnataka:["Bengaluru Urban","Bengaluru Rural","Mysuru","Dharwad","Belagavi","Udupi","Shivamogga","Other"],Maharashtra:["Mumbai City","Pune","Nagpur","Nashik","Other"],"Tamil Nadu":["Chennai","Coimbatore","Madurai","Salem","Other"],Kerala:["Thiruvananthapuram","Ernakulam","Kozhikode","Other"],Telangana:["Hyderabad","Warangal","Nizamabad","Other"],"Andhra Pradesh":["Visakhapatnam","Guntur","Tirupati","Other"],Delhi:["Central Delhi","East Delhi","New Delhi","Other"],"Uttar Pradesh":["Lucknow","Varanasi","Kanpur Nagar","Other"],Gujarat:["Ahmedabad","Surat","Vadodara","Other"],Goa:["North Goa","South Goa","Other"],"West Bengal":["Kolkata","Darjeeling","Howrah","Other"],Other:["Other / not listed"]};
+    const cities={"Bengaluru Urban":["Bengaluru","Other"],"Bengaluru Rural":["Devanahalli","Doddaballapur","Other"],Mysuru:["Mysuru","Nanjangud","Other"],Dharwad:["Hubballi","Dharwad","Other"],Belagavi:["Belagavi","Other"],Udupi:["Udupi","Kundapura","Other"],"Mumbai City":["Mumbai","Other"],Pune:["Pune","Pimpri-Chinchwad","Other"],Chennai:["Chennai","Other"],Hyderabad:["Hyderabad","Other"],"Central Delhi":["New Delhi","Other"],Other:["Other / not listed"]};
+    const roleFields={
+      patient:{
+        role:[{id:"accountType",label:"I am registering as",type:"select",options:["Patient","Parent / guardian","Caregiver"]},{type:"note",text:"Your patient profile connects appointments, records, blood group, insurance and government schemes in one CareSphere account."}],
+        medical:[{id:"bloodGroup",label:"Blood group",type:"select",options:["A+","A−","B+","B−","AB+","AB−","O+","O−","Unknown","Prefer not to say"]},{id:"hasConditions",label:"Existing medical conditions?",type:"select",options:["Prefer not to say","No","Yes"]},{id:"conditions",label:"Select conditions",type:"checks",options:["Diabetes","Hypertension","Asthma","Heart disease","Kidney disease","Liver disease","Cancer","Thyroid","Epilepsy","Other"],when:["hasConditions","Yes"],full:true},{id:"conditionOther",label:"Please specify",when:["conditions","Other"]},{id:"allergies",label:"Known allergies",hint:"Optional"},{id:"medications",label:"Current medications",hint:"Optional"},{id:"surgeries",label:"Previous major surgeries"},{id:"assistance",label:"Disability / assistance requirements"},{id:"medicalNotes",label:"Emergency medical notes",type:"textarea",full:true},{id:"organDonor",label:"Organ donor preference",type:"select",options:["Prefer not to say","Yes","No","Not decided"]},{type:"note",text:"Your medical information is sensitive and optional. You can update it later."}],
+        additional:[{id:"emergencyName",label:"Emergency contact name",required:true},{id:"emergencyRelationship",label:"Relationship",type:"select",required:true,options:["Parent","Partner / spouse","Sibling","Child","Friend","Other"]},{id:"emergencyPhone",label:"Emergency contact phone",type:"tel",required:true},{id:"hasInsurance",label:"Do you have health insurance?",type:"select",options:["Prefer not to say","No","Yes"]},{id:"insuranceProvider",label:"Insurance provider",when:["hasInsurance","Yes"]},{id:"policyNumber",label:"Policy number",when:["hasInsurance","Yes"]},{id:"policyValidity",label:"Policy validity",type:"date",when:["hasInsurance","Yes"]},{id:"hasScheme",label:"Government healthcare scheme?",type:"select",options:["Don't know","No","Yes"]},{id:"schemeName",label:"Scheme name",when:["hasScheme","Yes"]},{id:"beneficiaryId",label:"Beneficiary ID (optional)",when:["hasScheme","Yes"]}]
+      },
+      doctor:{
+        role:[{id:"registrationNumber",label:"Medical registration number",required:true},{id:"registrationAuthority",label:"Registration authority",required:true},{id:"qualification",label:"Medical qualification",required:true,placeholder:"e.g. MBBS, MD"},{id:"specialization",label:"Specialization",required:true},{id:"subSpecialization",label:"Sub-specialization"},{id:"experience",label:"Years of experience",type:"number"},{id:"languagesSpoken",label:"Languages spoken"},{id:"expertise",label:"Areas of expertise",full:true},{id:"hospitalName",label:"Hospital / clinic",required:true},{id:"hospitalId",label:"Hospital ID"},{id:"department",label:"Department"},{id:"designation",label:"Designation"},{type:"verify",text:"Professional registration must be independently verified before verified status or patient-record access is granted."}],
+        medical:[{id:"registrationDocument",label:"Professional registration document (demo only)",type:"file",hint:"Do not upload real identity documents."},{id:"verificationAck",label:"I understand credentials are not verified in this demo",type:"select",required:true,options:["Choose","I understand"]}],
+        additional:[{id:"availableDays",label:"Available days",type:"checks",options:["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],full:true},{id:"workingHours",label:"Working hours",placeholder:"e.g. 9 AM – 5 PM"},{id:"consultationType",label:"Consultation types",type:"checks",options:["In-person","Telemedicine","Emergency"],full:true},{id:"telemedicineAvailable",label:"Offer telemedicine?",type:"select",options:["No","Yes"]},{id:"telemedicineHours",label:"Telemedicine availability",when:["telemedicineAvailable","Yes"]}]
+      },
+      nurse:{
+        role:[{id:"qualification",label:"Qualification",required:true},{id:"registrationNumber",label:"Professional registration number",required:true},{id:"registrationAuthority",label:"Registration authority",required:true},{id:"experience",label:"Years of experience",type:"number"},{id:"hospitalName",label:"Hospital / facility",required:true},{id:"department",label:"Department"},{id:"designation",label:"Designation"},{id:"skills",label:"Skills / specializations",full:true},{type:"verify",text:"Professional registration must be verified before staff access is approved."}],
+        medical:[{id:"nursingDocument",label:"Professional document (demo only)",type:"file",hint:"Do not upload real identity documents."}],
+        additional:[{id:"shift",label:"Preferred shift",type:"select",options:["Morning","Afternoon","Night","Rotational","Other"]},{id:"emergencyAvailability",label:"Emergency availability",type:"select",options:["Unavailable","Available"]}]
+      },
+      hospital:{
+        role:[{id:"hospitalName",label:"Hospital name",required:true},{id:"hospitalId",label:"Hospital / government hospital ID",required:true},{id:"hospitalType",label:"Hospital type",type:"select",options:["Government","Public teaching hospital","Private","Community health centre","Other"]},{id:"hospitalAddress",label:"Hospital address",type:"textarea",full:true},{id:"employeeId",label:"Employee ID",required:true},{id:"designation",label:"Designation",required:true},{id:"department",label:"Department"},{id:"responsibility",label:"Role / responsibility"},{id:"joiningDate",label:"Joining date",type:"date"},{type:"verify",text:"Facility and employee access remain pending until an authorized hospital verifies this request."}],
+        additional:[{id:"authorizedModules",label:"Modules requested (subject to approval)",type:"checks",options:["Patient management","Beds","Resources","Doctors","Medicine inventory","Blood inventory","Diagnostics","Equipment","Ambulance","Emergency","Referrals","Billing","Reports"],full:true}]
+      },
+      ambulance:{
+        role:[{id:"staffId",label:"Staff ID",required:true},{id:"designation",label:"Designation",type:"select",options:["Driver","EMT","Paramedic","Other"]},{id:"certification",label:"Certification"},{id:"experience",label:"Years of experience",type:"number"},{id:"organization",label:"Ambulance organization / hospital",required:true},{id:"ambulanceRegistration",label:"Ambulance registration number",required:true},{id:"ambulanceId",label:"Ambulance ID"},{id:"ambulanceType",label:"Ambulance type",type:"select",options:["Basic Life Support","Advanced Life Support","Patient transport","Other"]},{id:"equipment",label:"Equipment available",full:true},{id:"baseLocation",label:"Current base location"},{id:"status",label:"Availability",type:"select",options:["Available","Busy","Offline","Maintenance"]},{type:"verify",text:"This prototype does not dispatch real emergency services. Assignments require organization approval."}],
+        additional:[{id:"locationPermission",label:"Allow location during active emergency assignments?",type:"select",options:["Don't allow","Allow"]},{type:"note",text:"If permitted, location supports coordination and navigation during an active emergency assignment."}]
+      },
+      blood:{
+        role:[{id:"staffId",label:"Staff ID",required:true},{id:"designation",label:"Designation",required:true},{id:"bloodBankName",label:"Blood bank name",required:true},{id:"bloodBankId",label:"Blood bank ID",required:true},{id:"certification",label:"Certification / authorization",required:true},{id:"department",label:"Department"},{id:"bloodBankAddress",label:"Blood bank location",type:"textarea",full:true},{id:"operatingHours",label:"Operating hours"},{id:"emergencyPhone",label:"Emergency contact",type:"tel"},{id:"bloodInventory",label:"Inventory categories requested",type:"checks",options:["A+","A−","B+","B−","AB+","AB−","O+","O−"],full:true},{type:"verify",text:"Blood inventory is read-only until blood-bank staff and facility permissions are authorized."}],
+        additional:[{type:"note",text:"Available units, reservations, critical levels and expiry records are sensitive shared data. Only authorized staff can update them."}]
+      },
+      supplier:{
+        role:[{id:"organizationName",label:"Pharmacy / supplier name",required:true},{id:"organizationId",label:"Organization ID"},{id:"licenseNumber",label:"License number",required:true},{id:"licenseAuthority",label:"License authority",required:true},{id:"businessType",label:"Business type",type:"select",options:["Government pharmacy","Hospital pharmacy","Medical supplier","Distributor","Other"]},{id:"organizationAddress",label:"Organization address",type:"textarea",full:true},{id:"organizationPin",label:"Organization PIN code",pattern:"[0-9]{6}",max:"999999"},{id:"medicinesSupplied",label:"Medicines supplied"},{id:"equipmentSupplied",label:"Medical equipment supplied"},{id:"serviceArea",label:"Service area"},{id:"deliveryAvailable",label:"Delivery availability",type:"select",options:["Not available","Available"]},{id:"emergencySupply",label:"Emergency supply availability",type:"select",options:["Not available","Available"]},{type:"verify",text:"Orders and inventory remain unavailable until the supplier license and organization are verified."}],
+        additional:[{type:"note",text:"Supplier account is part of the same CareSphere network. Inventory and orders shown in this demo are illustrative only."}]
+      },
+      government:{
+        role:[{id:"employeeId",label:"Government employee ID",required:true},{id:"department",label:"Department",required:true},{id:"designation",label:"Designation",required:true},{id:"organization",label:"Government organization",required:true},{id:"administrativeLevel",label:"Administrative level",type:"select",options:["State","District","Taluk / Block","City","Hospital / healthcare facility"]},{id:"officialState",label:"Assigned state",type:"select",options:["Karnataka","Other state"]},{id:"officialDistrict",label:"Assigned district",when:["administrativeLevel","District"]},{id:"officialTalukDistrict",label:"Assigned district",when:["administrativeLevel","Taluk / Block"]},{id:"officialTaluk",label:"Taluk / block",when:["administrativeLevel","Taluk / Block"]},{id:"officialCity",label:"Assigned city",when:["administrativeLevel","City"]},{id:"officialFacility",label:"Hospital / healthcare facility",when:["administrativeLevel","Hospital / healthcare facility"]},{id:"responsibilities",label:"Responsibilities requested (subject to approval)",type:"checks",options:["Hospital monitoring","Resource monitoring","Medicine supply","Blood availability","Ambulance monitoring","Healthcare schemes","Analytics","Reports","Emergency coordination","Audit review"],full:true},{type:"verify",text:"Official identity and scope must be verified. No government controls or patient information are granted by role selection."}],
+        additional:[{id:"officialIdUpload",label:"Official ID (demo only)",type:"file",hint:"Do not upload real identity documents to this prototype."}]
+      },
+      admin:{
+        role:[{id:"adminId",label:"Admin ID",required:true},{id:"officialEmail",label:"Official email address",type:"email",required:true},{id:"organization",label:"Organization",required:true},{id:"adminDesignation",label:"Role / designation",required:true},{id:"adminDepartment",label:"Department"},{id:"adminMfaMethod",label:"Strong authentication method requested",type:"select",required:true,options:["Authenticator app","Security key","Verified organization sign-in"]},{type:"verify",text:"Administrator privileges are never granted by selecting this role. Independent identity verification, MFA and explicit authorization are required."}],
+        additional:[{type:"note",text:"This prototype does not provide administrative controls, privileged access or production audit logging."}]
+      }
+    };
+    const roleNames=Object.fromEntries(roleList.map(([id,,name])=>[id,name]));
+    const state={role:"patient",step:0,values:{}};
+    const content=document.getElementById("content");
+    const STORAGE_KEY="caresphere-onboarding-draft";
+    const escapeHtml=value=>String(value??"").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
+
+    function saveDraft(){try{sessionStorage.setItem(STORAGE_KEY,JSON.stringify(state));return true}catch(error){showMessage("Progress cannot be saved in this browser session.");return false}}
+    function loadDraft(){try{const draft=sessionStorage.getItem(STORAGE_KEY);if(!draft)return false;const parsed=JSON.parse(draft);if(!roleFields[parsed.role]||!parsed.values)return false;state.role=parsed.role;state.step=Number.isInteger(parsed.step)?parsed.step:0;state.values=parsed.values;return true}catch(error){return false}}
+    function showMessage(text){const message=document.getElementById("message");if(message)message.textContent=text}
+    function roleName(){return roleNames[state.role]}
+    function ageFromDate(value){if(!value)return "";const born=new Date(`${value}T00:00:00`);if(Number.isNaN(born.getTime()))return "";const now=new Date();let years=now.getFullYear()-born.getFullYear();if(now.getMonth()<born.getMonth()||(now.getMonth()===born.getMonth()&&now.getDate()<born.getDate()))years--;return years>=0&&years<=120?`${years} years`:""}
+    function renderRolePicker(){
+      document.getElementById("skipSetup").hidden=true;
+      content.className="content role-picker";
+      const cards=roleList.map(([id,icon,name,description])=>`<button class="role" type="button" role="radio" aria-checked="${state.role===id}" data-role="${id}"><span class="role-icon" aria-hidden="true">${icon}</span><span class="role-name">${name}</span><span class="role-desc">${description}</span><span class="selected-mark" aria-hidden="true">✓</span></button>`).join("");
+      const resume=state.values.fullName?'<button class="secondary" type="button" data-action="resume">Continue saved setup</button>':"";
+      content.innerHTML=`<div class="kicker">ONE CARESPHERE ACCOUNT · ROLE-BASED ACCESS</div><h1 id="pageTitle" tabindex="-1">How will you use CareSphere?</h1><p class="intro">Choose the role that best describes you. We’ll tailor your profile setup and dashboard inside this shared healthcare platform.</p><div class="role-grid" role="radiogroup" aria-label="Choose your CareSphere role">${cards}</div><div class="actions"><a class="back" href="logo-animation.html">←&nbsp; Welcome</a><div class="action-group">${resume}<button class="primary" type="button" data-action="start">Continue&nbsp; →</button></div></div>${resume?'<p class="footnote">Your draft is stored in this browser tab only. Do not enter real medical or identity information in this demo.</p>':""}<p class="footnote">Professional, government and administrator access require verification. Role selection never grants permissions.</p>`;
+      document.getElementById("pageTitle").focus({preventScroll:true});
+    }
+    function fieldMarkup(field){
+      if(field.type==="note")return `<div class="note">${escapeHtml(field.text)}</div>`;
+      if(field.type==="verify")return `<div class="verification"><span class="badge">Verification pending</span><br>${escapeHtml(field.text)}</div>`;
+      const value=state.values[field.id],full=field.full?"full":"",hint=field.hint?`<span class="hint">${escapeHtml(field.hint)}</span>`:"";
+      const required=field.required?"required":"",pattern=field.pattern?`pattern="${escapeHtml(field.pattern)}"`:"",max=field.max?`max="${escapeHtml(field.max)}"`:"";
+      let input;
+      if(field.type==="age")input=`<output class="age" id="ageOutput">Calculated from date of birth</output>`;
+      else if(field.type==="select")input=`<select class="control" id="${field.id}" name="${field.id}" ${required} ${field.disabled?"disabled":""}><option value="">Choose an option${field.required?"":" (optional)"}</option>${field.options.map(option=>`<option value="${escapeHtml(option)}" ${value===option?"selected":""}>${escapeHtml(option)}</option>`).join("")}</select>`;
+      else if(field.type==="checks")input=`<div class="chips">${field.options.map(option=>`<label class="chip"><input type="checkbox" name="${field.id}" value="${escapeHtml(option)}" ${(value||[]).includes(option)?"checked":""}>${escapeHtml(option)}</label>`).join("")}</div>`;
+      else if(field.type==="textarea")input=`<textarea class="control" id="${field.id}" name="${field.id}" ${required} placeholder="${escapeHtml(field.placeholder||"")}">${escapeHtml(value)}</textarea>`;
+      else if(field.type==="file")input=`<input class="control" id="${field.id}" name="${field.id}" type="file" accept="image/*,.pdf">`;
+      else input=`<input class="control" id="${field.id}" name="${field.id}" type="${field.type||"text"}" value="${escapeHtml(value)}" ${required} ${pattern} ${max} placeholder="${escapeHtml(field.placeholder||"")}">`;
+      let html=`<label class="field ${full}" ${field.type==="checks"?"":`for="${field.id}"`}><span>${escapeHtml(field.label)}</span>${input}${hint}</label>`;
+      return field.when?`<div class="conditional ${full}" data-when="${field.when[0]}" data-value="${field.when[1]}">${html}</div>`:html;
+    }
+    function basicFields(){return[
+      {id:"fullName",label:"Full name",required:true,placeholder:"e.g. Aarav Mehta"},
+      {id:"profilePhoto",label:"Profile photo (optional)",type:"file",hint:"Demo only · do not upload a real ID"},
+      {id:"dateOfBirth",label:"Date of birth",type:"date",required:true},
+      {id:"age",label:"Age",type:"age"},
+      {id:"gender",label:"Gender",type:"select",required:true,options:["Female","Male","Non-binary","Prefer not to say"]},
+      {id:"mobile",label:"Mobile number",type:"tel",required:true,placeholder:"+91 98765 43210"},
+      {id:"email",label:["government","admin"].includes(state.role)?"Official email address":"Email address",type:"email",required:true,placeholder:"you@example.com"},
+      {id:"language",label:"Preferred language",type:"select",required:true,options:["English","Kannada","Hindi","Other supported language"]}
+    ]}
+    function locationFields(){return[
+      {id:"country",label:"Country",type:"select",required:true,options:["India"]},
+      {id:"state",label:"State / Union Territory",type:"select",required:true,options:states},
+      {id:"district",label:"District",type:"select",required:true,disabled:!state.values.state,options:districts[state.values.state]||[]},
+      {id:"city",label:"City / town / village",type:"select",required:true,disabled:!state.values.district,options:cities[state.values.district]||[]},
+      {id:"pinCode",label:"PIN code",required:true,pattern:"[0-9]{6}",placeholder:"6-digit PIN code"},
+      {id:"address",label:"Address",type:"textarea",full:true,placeholder:"Street, locality or landmark"}
+    ]}
+    function fieldsForStep(){
+      if(state.step===0)return basicFields();
+      if(state.step===1)return locationFields();
+      if(state.step===2)return roleFields[state.role].role;
+      if(state.step===3)return roleFields[state.role].medical||[{type:"note",text:"You can update your role-specific profile after setup. Only share optional information you are comfortable providing."}];
+      if(state.step===4)return roleFields[state.role].additional||[{type:"note",text:"You can update additional information from your profile later."}];
+      return[];
+    }
+    function updateAge(){const output=document.getElementById("ageOutput");if(output)output.textContent=ageFromDate(state.values.dateOfBirth)||"Calculated from date of birth"}
+    function updateLocationOptions(changedName){
+      const district=document.getElementById("district"),city=document.getElementById("city");
+      if(!district||!city)return;
+      if(changedName==="state"){
+        state.values.district="";state.values.city="";
+        district.disabled=!state.values.state;
+        district.innerHTML=`<option value="">Choose a district</option>${(districts[state.values.state]||[]).map(name=>`<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("")}`;
+        city.disabled=true;city.innerHTML='<option value="">Choose a district first</option>';
+      }
+      if(changedName==="district"){
+        state.values.city="";
+        city.disabled=!state.values.district;
+        city.innerHTML=`<option value="">Choose a city / town / village</option>${(cities[state.values.district]||["Other / not listed"]).map(name=>`<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("")}`;
+      }
+    }
+    function updateConditional(){
+      document.querySelectorAll(".conditional").forEach(group=>{
+        const chosen=state.values[group.dataset.when],visible=Array.isArray(chosen)?chosen.includes(group.dataset.value):String(chosen??"")===group.dataset.value;
+        group.hidden=!visible;
+        if(!visible)group.querySelectorAll("[name]").forEach(control=>{delete state.values[control.name];if(control.type==="checkbox")control.checked=false;else control.value=""})
+      });
+      updateAge();
+    }
+    function capture(){
+      const form=document.getElementById("form");if(!form)return;
+      const seen=new Set();
+      form.querySelectorAll('input[type="checkbox"][name]').forEach(input=>{
+        if(seen.has(input.name))return;
+        seen.add(input.name);
+        const group=form.querySelectorAll(`input[type="checkbox"][name="${CSS.escape(input.name)}"]`);
+        state.values[input.name]=group.length===1?input.checked:[...group].filter(item=>item.checked).map(item=>item.value);
+      });
+      form.querySelectorAll("input[name],select[name],textarea[name]").forEach(input=>{if(input.type!=="file"&&input.type!=="checkbox")state.values[input.name]=input.value});
+    }
+    function renderConsent(){return`<div class="privacy"><strong>Your information and privacy</strong><br>This demo uses your details to preview a unified profile. Medical details are optional and sensitive. A production CareSphere service should limit access through verified, role-based permissions. Location is for relevant care and any separately permitted emergency functions. You can update details later. Do not enter real patient or identity data here.</div><div class="consents"><label class="consent"><input type="checkbox" name="terms" ${state.values.terms?"checked":""} required><span>I agree to the CareSphere Terms and Conditions. <strong>(Required)</strong></span></label><label class="consent"><input type="checkbox" name="serviceConsent" ${state.values.serviceConsent?"checked":""} required><span>I consent to use of my information for services associated with my selected role. <strong>(Required)</strong></span></label><label class="consent"><input type="checkbox" name="sensitiveConsent" ${state.values.sensitiveConsent?"checked":""}><span>I understand medical information is sensitive, optional, and should only be shared with authorized care teams.</span></label></div>`}
+    function reviewCards(){
+      const data=state.values;
+      const sections=[
+        ["Personal information",0,[["Name",data.fullName],["Date of birth",data.dateOfBirth],["Age",ageFromDate(data.dateOfBirth)],["Gender",data.gender],["Mobile",data.mobile],["Email",data.email],["Language",data.language]]],
+        ["Location",1,[["Country","India"],["State",data.state],["District",data.district],["City",data.city],["PIN code",data.pinCode]]],
+        [`Role · ${roleName()}`,2,Object.entries(data).filter(([key,value])=>value&&!["fullName","dateOfBirth","gender","mobile","email","language","country","state","district","city","pinCode","accountType","bloodGroup","hasConditions","conditions","conditionOther","allergies","medications","surgeries","assistance","medicalNotes","organDonor","emergencyName","emergencyRelationship","emergencyPhone","hasInsurance","insuranceProvider","policyNumber","policyValidity","hasScheme","schemeName","beneficiaryId","terms","serviceConsent","sensitiveConsent"].includes(key)).map(([key,value])=>[key.replace(/([A-Z])/g," $1"),value])],
+        ["Medical information · Optional",3,[["Blood group",data.bloodGroup],["Conditions",data.conditions],["Other condition",data.conditionOther],["Allergies",data.allergies],["Medications",data.medications],["Previous surgeries",data.surgeries],["Assistance requirements",data.assistance],["Emergency medical notes",data.medicalNotes],["Organ donor preference",data.organDonor]]],
+        ["Emergency & additional information",4,[["Emergency contact",data.emergencyName],["Relationship",data.emergencyRelationship],["Emergency phone",data.emergencyPhone],["Insurance",data.insuranceProvider],["Policy number",data.policyNumber],["Policy validity",data.policyValidity],["Government scheme",data.schemeName],["Beneficiary ID",data.beneficiaryId]]]
+      ];
+      return `<div class="review">${sections.map(([title,step,items])=>{const rows=items.filter(([,value])=>value&&(!Array.isArray(value)||value.length));if(!rows.length)return"";return`<section class="review-card"><div class="review-head">${escapeHtml(title)}<button class="edit" type="button" data-edit="${step}">Edit</button></div><div class="review-grid">${rows.map(([label,value])=>`<div class="review-value"><span>${escapeHtml(label)}</span><strong>${escapeHtml(Array.isArray(value)?value.join(", "):value)}</strong></div>`).join("")}</div></section>`}).join("")}<div class="verification"><span class="badge">${state.role==="patient"?"Profile ready · Demo":"Pending verification"}</span><br>${state.role==="patient"?"This is a prototype profile only.":"Selecting this role does not grant professional or administrative access."}</div></div>`
+    }
+    function renderCreated(){
+      document.getElementById("skipSetup").hidden=true;
+      const roleStatus=state.role==="patient"?"Profile ready · Demo":"Pending independent verification";
+      content.className="content";
+      content.innerHTML=`<section class="created"><div class="created-icon" aria-hidden="true">✓</div><div class="kicker">ONE CARESPHERE PROFILE</div><h1 id="pageTitle" tabindex="-1">Welcome to CareSphere${state.values.fullName?`, ${escapeHtml(state.values.fullName.split(/\s+/)[0])}`:""}</h1><p class="intro" style="margin:9px auto 0">Your profile is ready in this prototype. You’re still part of the one shared CareSphere application.</p><div class="created-details"><div><span>ROLE</span><strong>${escapeHtml(roleName())}</strong></div><div><span>PROFILE COMPLETION</span><strong>100%</strong></div><div><span>VERIFICATION</span><strong>${escapeHtml(roleStatus)}</strong></div><div><span>ACCOUNT</span><strong>One CareSphere account</strong></div></div><button class="primary" type="button" data-action="dashboard">Go to my dashboard&nbsp; →</button><p class="footnote">Demo only: no credentials are verified, and the dashboard uses illustrative data.</p></section>`;
+      document.getElementById("pageTitle").focus({preventScroll:true});
+    }
+    function renderWizard(){
+      document.getElementById("skipSetup").hidden=false;
+      const progress=Math.round(state.step/7*100);
+      const body=state.step===5?renderConsent():state.step===6?reviewCards():`<div class="fields">${fieldsForStep().map(fieldMarkup).join("")}</div>`;
+      content.className="content";
+      content.innerHTML=`<div class="kicker">${escapeHtml(roleName())} · PROFILE SETUP</div><div class="progress"><div class="progress-copy"><span>Step ${state.step+1} of 8</span><strong>${steps[state.step][0]}</strong></div><div class="track" role="progressbar" aria-label="Profile setup progress" aria-valuemin="1" aria-valuemax="8" aria-valuenow="${state.step+1}"><span style="width:${Math.max(progress,8)}%"></span></div></div><div class="wizard"><form class="panel" id="form" novalidate><h2 id="pageTitle" tabindex="-1">${steps[state.step][0]}</h2><p class="step-description">${state.step===3&&state.role==="patient"?"Medical information is sensitive and optional. Add only what you want to share.":steps[state.step][1]}</p>${body}<div class="error" id="message" role="alert"></div><div class="actions wizard-actions"><button class="back" type="button" data-action="${state.step===0?"roles":"back"}">←&nbsp; ${state.step===0?"Change role":"Back"}</button><div class="action-group"><button class="secondary" type="button" data-action="save">Save for later</button><button class="primary" type="submit">${state.step===6?"Create my CareSphere profile":"Save & continue"}&nbsp; →</button></div></div></form><aside class="aside"><span class="aside-icon" aria-hidden="true">${state.step===3?"♡":"✦"}</span><h3>${state.step===3&&state.role==="patient"?"Your choice matters":"One connected platform"}</h3><p>${state.step===3&&state.role==="patient"?"Medical questions are optional. You can update your health profile later.":"Your role shapes your experience; verification protects access across the shared CareSphere network."}</p><ul><li><span>✓</span> Role-specific information</li><li><span>✓</span> Verification protects access</li><li><span>✓</span> Update details later</li></ul></aside></div>`;
+      updateConditional();document.getElementById("pageTitle").focus({preventScroll:true});
+    }
+    function render(){if(state.step===7){renderCreated();return}if(state.step<0){renderRolePicker();return}renderWizard()}
+    function submitStep(){
+      const form=document.getElementById("form");capture();
+      for(const input of form.querySelectorAll("input,select,textarea")){
+        if(input.type==="file"||input.disabled||input.closest(".conditional[hidden]"))continue;
+        const invalidPhone=input.type==="tel"&&input.value.trim()&&!/^\+?[0-9() -]{8,18}$/.test(input.value.trim());
+        if(!input.checkValidity()||invalidPhone){showMessage(input.validity.valueMissing?`${input.labels?.[0]?.innerText||"This field"} is required.`:input.validity.typeMismatch&&input.type==="email"?"Please enter a valid email address.":input.type==="tel"?"Please enter a valid phone number.":input.name.toLowerCase().includes("pin")?"Please enter a valid 6-digit PIN code.":input.validationMessage);input.reportValidity();return}
+      }
+      if(state.step===6&&(!state.values.terms||!state.values.serviceConsent)){showMessage("Please agree to both required consent statements to continue.");return}
+      state.step=Math.min(state.step+1,7);saveDraft();render();window.scrollTo({top:0,behavior:"smooth"});
+    }
+    function finish(){
+      const profile={role:state.role,name:state.values.fullName||"CareSphere user",language:state.values.language||"English",verification:state.role==="patient"?"demo":"pending"};
+      try{sessionStorage.setItem("caresphere-profile",JSON.stringify(profile));sessionStorage.removeItem(STORAGE_KEY)}catch(error){showMessage("Unable to save your profile to this browser tab. Please check browser storage settings.");return}
+      window.location.href="index.html?dashboard=1";
+    }
+    function skipCurrentStep(){
+      capture();
+      if(state.step<6){
+        const previousStep=state.step;
+        const nextStep=state.step+1;
+        state.step=nextStep;
+        if(!saveDraft()){state.step=previousStep;return}
+        render();
+        window.scrollTo({top:0,behavior:"smooth"});
+        return;
+      }
+      if(!saveDraft())return;
+      const profile={role:state.role,name:state.values.fullName||"CareSphere user",language:state.values.language||"English",verification:"incomplete",incomplete:true};
+      try{sessionStorage.setItem("caresphere-profile",JSON.stringify(profile))}catch(error){showMessage("Your profile could not be opened because browser storage is unavailable.");return}
+      window.location.href="index.html?dashboard=1";
+    }
+    document.getElementById("skipSetup").addEventListener("click",skipCurrentStep);
+    content.addEventListener("click",event=>{
+      const button=event.target.closest("button");if(!button)return;
+      if(button.dataset.role){if(state.role!==button.dataset.role){state.role=button.dataset.role;state.values={};state.step=-1}saveDraft();renderRolePicker();return}
+      if(button.dataset.edit!==undefined){capture();state.step=Number(button.dataset.edit);saveDraft();render();return}
+      switch(button.dataset.action){
+        case"start":state.step=0;saveDraft();render();break;
+        case"resume":if(state.step<0||state.step>6)state.step=0;render();break;
+        case"roles":saveDraft();renderRolePicker();break;
+        case"back":capture();state.step=Math.max(0,state.step-1);saveDraft();render();break;
+        case"save":capture();saveDraft();renderRolePicker();break;
+        case"dashboard":finish();break;
+      }
+    });
+    content.addEventListener("submit",event=>{if(event.target.id==="form"){event.preventDefault();submitStep()}});
+    content.addEventListener("input",event=>{if(event.target.closest("#form")){capture();updateConditional()}});
+    content.addEventListener("change",event=>{
+      if(!event.target.closest("#form"))return;
+      capture();
+      if(event.target.name==="state"||event.target.name==="district")updateLocationOptions(event.target.name);
+      updateConditional();saveDraft();
+    });
+    let hasDraft=loadDraft();
+    if(hasDraft){if(state.step===7)state.step=6;renderRolePicker()}else{state.step=-1;renderRolePicker()}
+  </script>
+</body>
+</html>

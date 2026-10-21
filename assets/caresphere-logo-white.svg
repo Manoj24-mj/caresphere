@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="118" viewBox="0 0 520 118" role="img" aria-labelledby="title desc">
+  <title id="title">CareSphere</title>
+  <desc id="desc">White CareSphere connected healthcare logo for dark backgrounds.</desc>
+  <defs>
+    <linearGradient id="sphere-gradient" x1="8" y1="10" x2="91" y2="92" gradientUnits="userSpaceOnUse"><stop stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity=".82"/></linearGradient>
+    <linearGradient id="core-gradient" x1="32" y1="32" x2="68" y2="70" gradientUnits="userSpaceOnUse"><stop stop-color="#7dc1ff"/><stop offset="1" stop-color="#67e0c3"/></linearGradient>
+    <symbol id="mark" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="41" fill="none" stroke="url(#sphere-gradient)" stroke-width="6"/>
+      <path d="M50 9.5v17M90.5 50h-17M50 90.5v-17M9.5 50h17" fill="none" stroke="#fff" stroke-linecap="round" stroke-width="2.5" opacity=".7"/>
+      <circle cx="50" cy="8.5" r="4.7" fill="#fff"/><circle cx="91.5" cy="50" r="4.7" fill="#fff"/>
+      <circle cx="50" cy="91.5" r="4.7" fill="#fff"/><circle cx="8.5" cy="50" r="4.7" fill="#fff"/>
+      <path d="M50 28 68 35v13c0 12.5-7.5 21.8-18 27-10.5-5.2-18-14.5-18-27V35l18-7Z" fill="#fff"/>
+      <path d="M46 38h8v8h8v8h-8v8h-8v-8h-8v-8h8v-8Z" fill="url(#core-gradient)"/>
+    </symbol>
+  </defs>
+  <use href="#mark" x="14" y="9" width="100" height="100"/>
+  <text x="132" y="69" fill="#fff" font-family="Inter, ui-sans-serif, Arial, sans-serif" font-size="42" font-weight="700" letter-spacing="-2.2">CareSphere</text>
+  <text x="136" y="92" fill="#d4e0ed" font-family="Inter, ui-sans-serif, Arial, sans-serif" font-size="11" font-weight="500" letter-spacing=".8">RIGHT CARE, RIGHT PLACE, RIGHT TIME.</text>
+</svg>
