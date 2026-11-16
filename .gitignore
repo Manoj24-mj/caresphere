@@ -1,0 +1,11 @@
+# Editor & IDE files
+.vscode/
+.idea/
+
+# Environment and sensitive keys
+.env
+.env.*
+*.local
+
+# Logs
+*.log

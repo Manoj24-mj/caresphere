@@ -1,0 +1,292 @@
+/* ==========================================================================
+   CARESPHERE — UNIFIED LUXURY HEALTHCARE DESIGN SYSTEM
+   Bespoke human-designed craftsmanship • Apple polish • Stripe clarity • Linear organization
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@500;600;700;800&family=Noto+Sans+Kannada:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
+
+:root {
+  color-scheme: light;
+
+  /* Primary Brand Palette */
+  --cs-midnight: #101B35;
+  --cs-deep-blue: #173F78;
+  --cs-electric-blue: #3478F6;
+  --cs-teal: #19B8B0;
+  --cs-teal-dark: #0F766E;
+
+  /* Supporting Surfaces */
+  --cs-ice-blue: #EFF6FF;
+  --cs-white: #FFFFFF;
+  --cs-canvas: #F8FAFD;
+  --cs-surface-alt: #F1F5F9;
+  --cs-purple: #7955D9;
+
+  /* Clinical Status Tones */
+  --cs-success: #10B981;
+  --cs-success-bg: #ECFDF5;
+  --cs-success-border: rgba(16, 185, 129, 0.25);
+  --cs-warning: #F59E0B;
+  --cs-warning-bg: #FFFBEB;
+  --cs-warning-border: rgba(245, 158, 11, 0.3);
+  --cs-danger: #EF4444;
+  --cs-danger-dark: #DC2626;
+  --cs-danger-bg: #FEF2F2;
+  --cs-danger-border: rgba(239, 68, 68, 0.25);
+  --cs-ai-purple: #8B5CF6;
+  --cs-ai-bg: #F5F3FF;
+
+  /* Typography Colors */
+  --cs-ink: #101B35;
+  --cs-ink-muted: #566981;
+  --cs-ink-subtle: #8493A8;
+  --cs-border: #E2E8F0;
+  --cs-border-subtle: #EDF2F7;
+  --cs-border-focus: #3478F6;
+
+  /* Multi-Layered Elevation Shadows */
+  --shadow-xs: 0 1px 2px rgba(16, 27, 53, 0.04);
+  --shadow-sm: 0 2px 6px -1px rgba(16, 27, 53, 0.05), 0 1px 2px rgba(16, 27, 53, 0.03);
+  --shadow-md: 0 8px 24px -4px rgba(16, 27, 53, 0.07), 0 2px 6px -1px rgba(16, 27, 53, 0.04);
+  --shadow-lg: 0 16px 36px -6px rgba(23, 63, 120, 0.1), 0 4px 12px -2px rgba(16, 27, 53, 0.04);
+  --shadow-xl: 0 24px 54px -10px rgba(16, 27, 53, 0.14);
+  --glow-primary: 0 6px 20px rgba(52, 120, 246, 0.28);
+  --glow-emergency: 0 6px 22px rgba(239, 68, 68, 0.32);
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* Typography */
+  --font-display: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  /* Transitions */
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-fast: 0.15s ease;
+  --transition-smooth: 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Base Reset & Defaults */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background-color: var(--cs-canvas);
+  color: var(--cs-ink);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  color: var(--cs-midnight);
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--cs-electric-blue);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   BUTTONS (Tactile Bevel & Physical Craft)
+   ========================================================================== */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 18px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 650;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-smooth);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.btn:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--cs-electric-blue) 0%, #2563EB 100%);
+  color: var(--cs-white);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 4px 14px rgba(52, 120, 246, 0.35);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #4F8DF7 0%, var(--cs-deep-blue) 100%);
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 8px 22px rgba(52, 120, 246, 0.42);
+}
+
+.btn-secondary {
+  background: var(--cs-white);
+  color: var(--cs-ink-muted);
+  border: 1px solid var(--cs-border);
+  box-shadow: var(--shadow-xs);
+}
+
+.btn-secondary:hover {
+  background: var(--cs-surface-alt);
+  color: var(--cs-midnight);
+  border-color: #CBD5E1;
+}
+
+.btn-emergency {
+  background: linear-gradient(135deg, var(--cs-danger) 0%, var(--cs-danger-dark) 100%);
+  color: var(--cs-white);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 4px 14px rgba(239, 68, 68, 0.38);
+  font-weight: 750;
+  letter-spacing: 0.02em;
+}
+
+.btn-emergency:hover {
+  background: linear-gradient(135deg, #F87171 0%, #B91C1C 100%);
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 8px 24px rgba(239, 68, 68, 0.48);
+}
+
+/* ==========================================================================
+   STATUS BADGES & INDICATORS
+   ========================================================================== */
+
+.badge-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.badge-status::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+.badge-status.available,
+.badge-status.success {
+  background: var(--cs-success-bg);
+  color: #065F46;
+  border: 1px solid var(--cs-success-border);
+}
+
+.badge-status.limited,
+.badge-status.warning {
+  background: var(--cs-warning-bg);
+  color: #92400E;
+  border: 1px solid var(--cs-warning-border);
+}
+
+.badge-status.critical,
+.badge-status.full,
+.badge-status.unavailable {
+  background: var(--cs-danger-bg);
+  color: #991B1B;
+  border: 1px solid var(--cs-danger-border);
+}
+
+.badge-status.ai {
+  background: var(--cs-ai-bg);
+  color: #5B21B6;
+  border: 1px solid rgba(139, 92, 246, 0.25);
+}
+
+.badge-status.unknown,
+.badge-status.demo {
+  background: #F1F5F9;
+  color: #475569;
+  border: 1px solid #E2E8F0;
+}
+
+/* ==========================================================================
+   3D VECTOR SYSTEM & ELEVATION
+   ========================================================================== */
+
+.cs-3d {
+  display: block;
+  flex: 0 0 auto;
+  overflow: visible;
+  filter: drop-shadow(0 4px 10px rgba(16, 27, 53, 0.08));
+  transition: transform 0.22s var(--ease-spring);
+}
+
+.resource-card:hover .cs-3d,
+.patient-service:hover .cs-3d,
+.role-card:hover .cs-3d,
+.role:hover .cs-3d,
+.patient-data-card:hover .cs-3d {
+  transform: translateY(-2px) scale(1.04);
+}
+
+/* ==========================================================================
+   ANIMATIONS & BEACONS
+   ========================================================================== */
+
+.pulse-beacon {
+  position: relative;
+}
+
+.pulse-beacon::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  border: 2px solid rgba(239, 68, 68, 0.5);
+  animation: csBeacon 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  pointer-events: none;
+}
+
+@keyframes csBeacon {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(1.15); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:not(.force-motion) body:not(.has-intro) *,
+  html:not(.force-motion) body:not(.has-intro) *::before,
+  html:not(.force-motion) body:not(.has-intro) *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

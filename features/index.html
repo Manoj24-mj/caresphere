@@ -7,6 +7,7 @@
   <title>CareSphere | Client overview</title>
   <link rel="icon" type="image/svg+xml" href="../assets/caresphere-app-icon.svg">
   <link rel="stylesheet" href="feature-pages.css">
+  <script src="../assets/caresphere-3d.js" defer></script>
   <script src="../assets/localization.js" defer></script>
 </head>
 <body class="overview-page">
@@ -80,5 +81,32 @@
     </section>
   </main>
   <footer class="site-footer"><span>CareSphere · Client walkthrough</span><a href="../index.html">Open the full dashboard prototype →</a></footer>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      if (!window.CareSphere3D || !window.CareSphere3D.svg) return;
+      const icons = {
+        "doctor-directory.html": "equipment",
+        "bed-availability.html": "hospital",
+        "medicine-availability.html": "capsules",
+        "ambulance-availability.html": "ambulance",
+        "blood-availability.html": "blood",
+        "government-schemes.html": "heart",
+        "unified-search.html": "network"
+      };
+      document.querySelectorAll(".feature-card").forEach(card => {
+        const href = card.getAttribute("href");
+        const key = icons[href];
+        if (key) {
+          const iconEl = card.querySelector(".feature-icon");
+          if (iconEl) {
+            iconEl.innerHTML = window.CareSphere3D.svg(key, { width: 44, height: 44 });
+            iconEl.style.background = "transparent";
+            iconEl.style.width = "auto";
+            iconEl.style.height = "auto";
+          }
+        }
+      });
+    });
+  </script>
 </body>
 </html>

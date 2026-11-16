@@ -75,8 +75,9 @@
       const detail = item.total ? `${item.available} available · ${item.total-item.available} occupied · ${item.total} total` : "Not reported";
       return `<div class="bed-row"><span>${escapeHtml(type)}</span><span class="meter"><span style="width:${percentage}%"></span></span><strong>${detail}</strong></div>`;
     }).join("");
-    return `<article class="resource-card"><div class="card-heading"><div><h2>${escapeHtml(hospital.name)}</h2><p>${escapeHtml(hospital.type)}</p></div>${statusPill(hospital.status)}</div>
-      <div class="resource-meta"><span>${escapeHtml(hospital.location)}</span><span>${hospital.distance} km</span></div>
+    const hosp3d = (window.CareSphere3D && window.CareSphere3D.svg) ? window.CareSphere3D.svg("hospital", { width: 36, height: 36 }) : "";
+    return `<article class="resource-card"><div class="card-heading"><div style="display:flex;align-items:center;gap:12px">${hosp3d}<div><h2>${escapeHtml(hospital.name)}</h2><p>${escapeHtml(hospital.type)}</p></div></div>${statusPill(hospital.status)}</div>
+      <div class="resource-meta"><span>📍 ${escapeHtml(hospital.location)}</span><span>🛣️ ${hospital.distance} km</span></div>
       <div class="bed-list">${lines}</div><p class="sample-update">Last sample update: ${escapeHtml(hospital.updated)}</p>
       <div class="card-actions"><a class="button secondary" href="https://www.google.com/maps/search/?api=1&amp;query=${encodeURIComponent(`${hospital.name}, ${hospital.location}`)}" target="_blank" rel="noopener noreferrer">Get directions</a></div></article>`;
   }
@@ -104,8 +105,9 @@
   }
 
   function medicineCard(medicine) {
-    return `<article class="resource-card"><div class="card-heading"><div><h2>${escapeHtml(medicine.name)} ${escapeHtml(medicine.strength)}</h2><p>${escapeHtml(medicine.provider)}</p></div>${statusPill(medicine.availability)}</div>
-      <div class="resource-meta"><span>${escapeHtml(medicine.providerType)}</span><span>${escapeHtml(medicine.location)}</span><span>${medicine.distance} km</span></div>
+    const pill3d = (window.CareSphere3D && window.CareSphere3D.svg) ? window.CareSphere3D.svg("capsules", { width: 36, height: 36 }) : "";
+    return `<article class="resource-card"><div class="card-heading"><div style="display:flex;align-items:center;gap:12px">${pill3d}<div><h2>${escapeHtml(medicine.name)} ${escapeHtml(medicine.strength)}</h2><p>${escapeHtml(medicine.provider)}</p></div></div>${statusPill(medicine.availability)}</div>
+      <div class="resource-meta"><span>🏪 ${escapeHtml(medicine.providerType)}</span><span>📍 ${escapeHtml(medicine.location)}</span><span>🛣️ ${medicine.distance} km</span></div>
       <div class="resource-meta"><strong>${escapeHtml(medicine.quantity)}</strong></div><p class="sample-update">Last sample update: ${escapeHtml(medicine.updated)}</p></article>`;
   }
 
@@ -128,9 +130,10 @@
   }
 
   function ambulanceCard(ambulance) {
+    const amb3d = (window.CareSphere3D && window.CareSphere3D.svg) ? window.CareSphere3D.svg("ambulance", { width: 36, height: 36 }) : "";
     const action = ambulance.status === "Unavailable" ? "" : `<button class="button secondary" type="button" data-ambulance="${escapeHtml(ambulance.id)}">Preview request</button>`;
-    return `<article class="resource-card"><div class="card-heading"><div><h2>${escapeHtml(ambulance.type)}</h2><p>${escapeHtml(ambulance.id)}</p></div>${statusPill(ambulance.status)}</div>
-      <div class="resource-meta"><span>${ambulance.distance} km · illustrative</span><span>Sample ETA ${ambulance.eta} min</span></div><div class="card-actions">${action}</div></article>`;
+    return `<article class="resource-card"><div class="card-heading"><div style="display:flex;align-items:center;gap:12px">${amb3d}<div><h2>${escapeHtml(ambulance.type)}</h2><p>${escapeHtml(ambulance.id)}</p></div></div>${statusPill(ambulance.status)}</div>
+      <div class="resource-meta"><span>🛣️ ${ambulance.distance} km · illustrative</span><span>⏱️ Sample ETA ${ambulance.eta} min</span></div><div class="card-actions">${action}</div></article>`;
   }
 
   function ambulanceForm() {
@@ -150,8 +153,9 @@
   }
 
   function bloodCard(item) {
-    return `<article class="resource-card"><div class="card-heading"><div><h2>${escapeHtml(item.group)} blood</h2><p>${escapeHtml(item.facility)}</p></div>${statusPill(item.status)}</div>
-      <div class="resource-meta"><span>${escapeHtml(item.location)}</span><span>${item.distance} km</span></div><div class="resource-meta"><strong>${item.units===null?"Units not reported":`${item.units} units (sample)`}</strong></div><p class="sample-update">${escapeHtml(item.updated)}</p></article>`;
+    const blood3d = (window.CareSphere3D && window.CareSphere3D.svg) ? window.CareSphere3D.svg("blood", { width: 36, height: 36 }) : "";
+    return `<article class="resource-card"><div class="card-heading"><div style="display:flex;align-items:center;gap:12px">${blood3d}<div><h2>${escapeHtml(item.group)} blood</h2><p>${escapeHtml(item.facility)}</p></div></div>${statusPill(item.status)}</div>
+      <div class="resource-meta"><span>📍 ${escapeHtml(item.location)}</span><span>🛣️ ${item.distance} km</span></div><div class="resource-meta"><strong>${item.units===null?"Units not reported":`${item.units} units (sample)`}</strong></div><p class="sample-update">${escapeHtml(item.updated)}</p></article>`;
   }
 
   function bloodPage() {
@@ -163,8 +167,9 @@
   function doctorsPage() {
     const q = state.query.trim().toLowerCase();
     const doctors = demo.doctors.filter(doctor => !q || `${doctor.name} ${doctor.specialty} ${doctor.facility}`.toLowerCase().includes(q));
-    const cards = doctors.map(doctor => `<article class="resource-card"><div class="card-heading"><div><h2>${escapeHtml(doctor.name)}</h2><p>${escapeHtml(doctor.specialty)}</p></div>${statusPill(doctor.status)}</div>
-      <div class="resource-meta"><span>${escapeHtml(doctor.facility)}</span><span>${doctor.distance} km</span></div>
+    const doc3d = (window.CareSphere3D && window.CareSphere3D.svg) ? window.CareSphere3D.svg("equipment", { width: 36, height: 36 }) : "";
+    const cards = doctors.map(doctor => `<article class="resource-card"><div class="card-heading"><div style="display:flex;align-items:center;gap:12px">${doc3d}<div><h2>${escapeHtml(doctor.name)}</h2><p>${escapeHtml(doctor.specialty)}</p></div></div>${statusPill(doctor.status)}</div>
+      <div class="resource-meta"><span>🏥 ${escapeHtml(doctor.facility)}</span><span>🛣️ ${doctor.distance} km</span></div>
       <div class="card-actions"><button class="button secondary" type="button" data-doctor-preview="${escapeHtml(doctor.name)}">Preview appointment</button></div>
       ${state.doctorMessage === doctor.name ? '<p class="inline-status" role="status">Appointment preview only — no appointment was booked or sent to the care team.</p>' : ""}</article>`).join("");
     const content = `<div class="toolbar"><input type="search" aria-label="Search doctors" placeholder="Search name, specialty or hospital" data-filter="query" value="${escapeHtml(state.query)}"></div>
@@ -174,9 +179,10 @@
   }
 
   function schemesPage() {
+    const scheme3d = (window.CareSphere3D && window.CareSphere3D.svg) ? window.CareSphere3D.svg("heart", { width: 36, height: 36 }) : "";
     const cards = demo.schemes.map(scheme => {
       const message = state.schemeMessage && state.schemeMessage.id === scheme.id ? `<p class="inline-status" role="status">${escapeHtml(state.schemeMessage.text)}</p>` : "";
-      return `<article class="scheme-card"><div class="card-heading"><div><h2>${escapeHtml(scheme.name)}</h2><p>${escapeHtml(scheme.description)}</p></div><span class="status unknown">Check rules</span></div>
+      return `<article class="scheme-card"><div class="card-heading"><div style="display:flex;align-items:center;gap:12px">${scheme3d}<div><h2>${escapeHtml(scheme.name)}</h2><p>${escapeHtml(scheme.description)}</p></div></div><span class="status unknown">Check rules</span></div>
         <p><strong>Eligibility:</strong> ${escapeHtml(scheme.eligibility)}</p><details><summary>Benefits and next steps</summary><ul>${scheme.benefits.map(benefit=>`<li>${escapeHtml(benefit)}</li>`).join("")}</ul><p>${escapeHtml(scheme.how)}</p><p>${escapeHtml(scheme.contact)}</p></details>
         <div class="card-actions"><button class="button secondary" type="button" data-scheme-preview="${escapeHtml(scheme.id)}">Application preview</button></div>${message}</article>`;
     }).join("");

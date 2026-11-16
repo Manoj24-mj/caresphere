@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f5f8fc">
   <link rel="icon" type="image/svg+xml" href="assets/caresphere-app-icon.svg">
+  <link rel="stylesheet" href="assets/caresphere-theme.css">
+  <script src="assets/caresphere-3d.js"></script>
   <script src="assets/localization.js" defer></script>
   <title>CareSphere — Create your profile</title>
   <style>
@@ -209,7 +211,26 @@
     function renderRolePicker(){
       document.getElementById("skipSetup").hidden=true;
       content.className="content role-picker";
-      const cards=roleList.map(([id,icon,name,description])=>`<button class="role" type="button" role="radio" aria-checked="${state.role===id}" data-role="${id}"><span class="role-icon" aria-hidden="true">${icon}</span><span class="role-name">${name}</span><span class="role-desc">${description}</span><span class="selected-mark" aria-hidden="true">✓</span></button>`).join("");
+      const role3dMap = {
+        patient: "heart",
+        doctor: "cross",
+        nurse: "equipment",
+        hospital: "hospital",
+        ambulance: "ambulance",
+        blood: "blood",
+        supplier: "capsules",
+        government: "network",
+        admin: "shield"
+      };
+      const cards=roleList.map(([id,icon,name,description])=>{
+        const key = role3dMap[id] || "cross";
+        const icon3d = (window.CareSphere3D && window.CareSphere3D.svg) ? window.CareSphere3D.svg(key, { width: 44, height: 44 }) : `<span class="role-icon" aria-hidden="true">${icon}</span>`;
+        return `<button class="role" type="button" role="radio" aria-checked="${state.role===id}" data-role="${id}">
+          <div style="display:flex;align-items:center;justify-content:space-between;width:100%">${icon3d}<span class="selected-mark" aria-hidden="true">✓</span></div>
+          <span class="role-name">${name}</span>
+          <span class="role-desc">${description}</span>
+        </button>`;
+      }).join("");
       const resume=state.values.fullName?'<button class="secondary" type="button" data-action="resume">Continue saved setup</button>':"";
       content.innerHTML=`<div class="kicker">ONE CARESPHERE ACCOUNT · ROLE-BASED ACCESS</div><h1 id="pageTitle" tabindex="-1">How will you use CareSphere?</h1><p class="intro">Choose the role that best describes you. We’ll tailor your profile setup and dashboard inside this shared healthcare platform.</p><div class="role-grid" role="radiogroup" aria-label="Choose your CareSphere role">${cards}</div><div class="actions"><a class="back" href="logo-animation.html">←&nbsp; Welcome</a><div class="action-group">${resume}<button class="primary" type="button" data-action="start">Continue&nbsp; →</button></div></div>${resume?'<p class="footnote">Your draft is stored in this browser tab only. Do not enter real medical or identity information in this demo.</p>':""}<p class="footnote">Professional, government and administrator access require verification. Role selection never grants permissions.</p>`;
       document.getElementById("pageTitle").focus({preventScroll:true});

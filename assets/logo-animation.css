@@ -68,11 +68,12 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #a8bad2;
-  font-size: 12px;
-  font-weight: 680;
-  letter-spacing: 1.3px;
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: 1.2px;
   text-transform: uppercase;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.4);
 }
 
 .eyebrow::before {
@@ -187,12 +188,13 @@ body {
 .topleft { top: 18%; left: 1%; --dx: 124px; --dy: 94px; }
 
 .caption {
-  min-height: 28px;
+  min-height: 32px;
   margin: 1px 0 0;
-  color: #a9bbd0;
-  font-size: 14px;
-  font-weight: 500;
+  color: #FFFFFF;
+  font-size: 15.5px;
+  font-weight: 700;
   letter-spacing: .2px;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.5);
   animation: caption 1.2s ease-in-out infinite alternate;
 }
 
