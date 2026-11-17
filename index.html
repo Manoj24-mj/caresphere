@@ -718,6 +718,68 @@
       color: #475569; font-weight: 650; font-size: 12.5px;
     }
 
+    /* Consent & Privacy Step */
+    .privacy-note {
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid #E2E8F0;
+      background: #F8FAFC;
+      color: #475569;
+      font-size: 12.5px;
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+    .privacy-note strong {
+      color: #0F172A;
+      font-size: 13.5px;
+    }
+    .consent-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+      margin: 16px 0;
+    }
+    .consent-item {
+      display: flex !important;
+      flex-direction: row !important;
+      align-items: flex-start !important;
+      gap: 12px !important;
+      width: 100% !important;
+      padding: 14px 16px !important;
+      border: 1.5px solid #E2E8F0 !important;
+      border-radius: 12px !important;
+      background: #FFFFFF !important;
+      color: #334155 !important;
+      font-size: 13px !important;
+      line-height: 1.5 !important;
+      cursor: pointer;
+      box-sizing: border-box !important;
+      transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .consent-item:hover {
+      border-color: #93C5FD !important;
+      background: #F8FAFC !important;
+    }
+    .consent-item:has(input:checked) {
+      border-color: #3B82F6 !important;
+      background: #EFF6FF !important;
+      color: #1E3A8A !important;
+    }
+    .consent-item input[type="checkbox"] {
+      margin-top: 2px !important;
+      width: 18px !important;
+      height: 18px !important;
+      min-width: 18px !important;
+      accent-color: #2563EB !important;
+      cursor: pointer;
+      flex-shrink: 0 !important;
+    }
+    .consent-item span {
+      flex: 1 1 auto !important;
+      font-weight: 500;
+    }
+
     /* Mobile Nav */
     .mobile-nav { display: none; }
 
@@ -1141,7 +1203,7 @@
         {id:"profilePhoto",label:"Profile photo",type:"file",accept:"image/*",hint:"Optional · JPG or PNG"},
         {id:"dateOfBirth",label:"Date of birth",type:"date",required:true},
         {id:"age",label:"Age",type:"age"},
-        {id:"gender",label:"Gender",type:"select",required:true,options:["Female","Male","Non-binary","Prefer not to say"]},
+        {id:"gender",label:"Gender",type:"select",required:true,options:["Female","Male","Non-binary"]},
         {id:"mobile",label:"Mobile number",type:"tel",required:true,placeholder:"+91 98765 43210",hint:"Enter a phone number you can access."},
         {id:"email",label:"Email address",type:"email",required:true,placeholder:"you@example.com"},
         {id:"language",label:"Preferred language",type:"select",required:true,options:["English","Kannada","Hindi","Other supported language"]}
@@ -1151,8 +1213,9 @@
         {id:"state",label:"State / Union Territory",type:"select",required:true,options:["Andhra Pradesh","Delhi","Goa","Gujarat","Karnataka","Kerala","Maharashtra","Tamil Nadu","Telangana","Uttar Pradesh","West Bengal","Other"]},
         {id:"district",label:"District",type:"select",required:true,options:["Select a state first"],disabled:true},
         {id:"city",label:"City / town / village",type:"select",required:true,options:["Choose a district first"],disabled:true},
+        {id:"customCity",label:"Enter your city / town / village name",type:"text",required:true,placeholder:"Type your city, town or village name",conditional:["city","Other / Enter city manually"],full:true},
         {id:"pinCode",label:"PIN code",type:"text",required:true,pattern:"[0-9]{6}",maxlength:"6",placeholder:"6-digit PIN code"},
-        {id:"address",label:"Address",type:"textarea",placeholder:"Street, locality or landmark",full:true}
+        {id:"address",label:"Address",type:"textarea",required:true,placeholder:"Street, locality or landmark",full:true}
       ]}
     ];
     const roleSteps = {
@@ -1160,8 +1223,8 @@
         {id:"accountType",label:"I am registering as",type:"select",required:true,options:["Patient","Parent / guardian","Caregiver"]},
         {id:"profileNote",type:"note",text:"Your patient profile can connect appointments, medical records, insurance and government schemes in one CareSphere account."}
       ],medical:[
-        {id:"bloodGroup",label:"Blood group",type:"select",options:["A+","A−","B+","B−","AB+","AB−","O+","O−","Unknown","Prefer not to say"]},
-        {id:"hasConditions",label:"Do you have any existing medical conditions?",type:"select",options:["Prefer not to say","No","Yes"]},
+        {id:"bloodGroup",label:"Blood group",type:"select",options:["A+","A−","B+","B−","AB+","AB−","O+","O−","Unknown"]},
+        {id:"hasConditions",label:"Do you have any existing medical conditions?",type:"select",options:["No","Yes"]},
         {id:"conditions",label:"Select any conditions that apply",type:"checkboxes",options:["Diabetes","Hypertension","Asthma","Heart disease","Kidney disease","Liver disease","Cancer","Thyroid","Epilepsy","Other"],conditional:["hasConditions","Yes"],full:true},
         {id:"conditionOther",label:"Please specify",type:"text",conditional:["conditions","Other"]},
         {id:"allergies",label:"Known allergies",type:"text",hint:"Optional · You can update this later."},
@@ -1169,13 +1232,13 @@
         {id:"surgeries",label:"Previous major surgeries",type:"text"},
         {id:"assistance",label:"Disability or assistance requirements",type:"text"},
         {id:"medicalNotes",label:"Emergency medical notes",type:"textarea",full:true},
-        {id:"organDonor",label:"Organ donor preference",type:"select",options:["Prefer not to say","Yes","No","Not decided"]},
+        {id:"organDonor",label:"Organ donor preference",type:"select",options:["Yes","No","Not decided"]},
         {id:"medicalNote",type:"note",text:"Your medical information is sensitive and optional. You can update your medical information later."}
       ],additional:[
         {id:"emergencyName",label:"Emergency contact name",type:"text",required:true},
         {id:"emergencyRelationship",label:"Relationship",type:"select",required:true,options:["Parent","Partner / spouse","Sibling","Child","Friend","Other"]},
         {id:"emergencyPhone",label:"Emergency contact phone",type:"tel",required:true,placeholder:"+91 98765 43210"},
-        {id:"hasInsurance",label:"Do you have health insurance?",type:"select",options:["Prefer not to say","No","Yes"]},
+        {id:"hasInsurance",label:"Do you have health insurance?",type:"select",options:["No","Yes"]},
         {id:"insuranceProvider",label:"Insurance provider",type:"text",conditional:["hasInsurance","Yes"]},
         {id:"policyNumber",label:"Policy number",type:"text",conditional:["hasInsurance","Yes"]},
         {id:"policyValidity",label:"Policy validity",type:"date",conditional:["hasInsurance","Yes"]},
@@ -1553,18 +1616,18 @@
       Other: ["Other / not listed"]
     };
     const cityOptions = {
-      "Bengaluru Urban": ["Bengaluru","Other"],
-      "Bengaluru Rural": ["Devanahalli","Doddaballapur","Other"],
-      Mysuru: ["Mysuru","Nanjangud","Other"],
-      Dharwad: ["Hubballi","Dharwad","Other"],
-      Belagavi: ["Belagavi","Other"],
-      Udupi: ["Udupi","Kundapura","Other"],
-      "Mumbai City": ["Mumbai","Other"],
-      Pune: ["Pune","Pimpri-Chinchwad","Other"],
-      Chennai: ["Chennai","Other"],
-      Hyderabad: ["Hyderabad","Other"],
-      "Central Delhi": ["New Delhi","Other"],
-      Other: ["Other / not listed"]
+      "Bengaluru Urban": ["Bengaluru","Other / Enter city manually"],
+      "Bengaluru Rural": ["Devanahalli","Doddaballapur","Other / Enter city manually"],
+      Mysuru: ["Mysuru","Nanjangud","Other / Enter city manually"],
+      Dharwad: ["Hubballi","Dharwad","Other / Enter city manually"],
+      Belagavi: ["Belagavi","Other / Enter city manually"],
+      Udupi: ["Udupi","Kundapura","Other / Enter city manually"],
+      "Mumbai City": ["Mumbai","Other / Enter city manually"],
+      Pune: ["Pune","Pimpri-Chinchwad","Other / Enter city manually"],
+      Chennai: ["Chennai","Other / Enter city manually"],
+      Hyderabad: ["Hyderabad","Other / Enter city manually"],
+      "Central Delhi": ["New Delhi","Other / Enter city manually"],
+      Other: ["Other / Enter city manually"]
     };
 
     let welcomeTimer;
@@ -1809,8 +1872,8 @@
     function reviewMarkup() {
       const data = wizard.values;
       const basics = [["Full name",data.fullName],["Date of birth",data.dateOfBirth],["Age",ageFromDate(data.dateOfBirth)],["Gender",data.gender],["Mobile",data.mobile],["Email",data.email],["Language",data.language]];
-      const location = [["Country","India"],["State",data.state],["District",data.district],["City",data.city],["PIN code",data.pinCode]];
-      const roleValues = Object.entries(data).filter(([id,value]) => value && !["fullName","profilePhoto","dateOfBirth","gender","mobile","email","language","country","state","district","city","pinCode","address","agreeTerms","agreeServices","emergencyName","emergencyRelationship","emergencyPhone","hasInsurance","insuranceProvider","policyNumber","policyValidity","hasScheme","schemeName","beneficiaryId","hasConditions","conditions","conditionOther","allergies","medications","surgeries","assistance","medicalNotes","organDonor"].includes(id) && (typeof value !== "object" || Array.isArray(value))).map(([id,value]) => [id.replace(/([A-Z])/g," $1").replace(/^./,letter=>letter.toUpperCase()),value]);
+      const location = [["Country","India"],["State",data.state],["District",data.district],["City",data.customCity || data.city],["PIN code",data.pinCode],["Address",data.address]];
+      const roleValues = Object.entries(data).filter(([id,value]) => value && !["fullName","profilePhoto","dateOfBirth","gender","mobile","email","language","country","state","district","city","customCity","pinCode","address","agreeTerms","agreeServices","emergencyName","emergencyRelationship","emergencyPhone","hasInsurance","insuranceProvider","policyNumber","policyValidity","hasScheme","schemeName","beneficiaryId","hasConditions","conditions","conditionOther","allergies","medications","surgeries","assistance","medicalNotes","organDonor"].includes(id) && (typeof value !== "object" || Array.isArray(value))).map(([id,value]) => [id.replace(/([A-Z])/g," $1").replace(/^./,letter=>letter.toUpperCase()),value]);
       const health = [["Blood group",data.bloodGroup],["Conditions",data.conditions],["Other condition",data.conditionOther],["Allergies",data.allergies],["Medications",data.medications],["Surgeries",data.surgeries],["Assistance",data.assistance],["Emergency notes",data.medicalNotes]];
       const emergency = [["Emergency contact",data.emergencyName],["Relationship",data.emergencyRelationship],["Phone",data.emergencyPhone],["Insurance provider",data.insuranceProvider],["Policy number",data.policyNumber],["Government scheme",data.schemeName]];
       return `<div class="review-list">
@@ -1891,7 +1954,7 @@
         const fieldId = group.dataset.conditionId;
         const expected = group.dataset.conditionValue;
         const selected = wizard.values[fieldId];
-        const show = Array.isArray(selected) ? selected.includes(expected) : String(selected ?? "") === expected;
+        const show = Array.isArray(selected) ? selected.includes(expected) : (String(selected ?? "") === expected || (expected.includes("Other") && String(selected ?? "").startsWith("Other")));
         group.hidden = !show;
         if (!show) {
           group.querySelectorAll("[name]").forEach(control => {
@@ -1912,7 +1975,7 @@
         district.value = wizard.values.district || "";
       }
       if (city && wizard.values.district) {
-        const cities = cityOptions[wizard.values.district] || ["Other / not listed"];
+        const cities = cityOptions[wizard.values.district] || ["Other / Enter city manually"];
         city.disabled = false;
         city.innerHTML = `<option value="">Choose a city / town / village</option>${cities.map(item=>`<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`).join("")}`;
         city.value = wizard.values.city || "";
@@ -1954,7 +2017,7 @@
       }
       if ((changedField === "district" || changedField === "state") && city) {
         if (city.tagName === "SELECT") {
-          const options = cityOptions[wizard.values.district] || ["Other / not listed"];
+          const options = cityOptions[wizard.values.district] || ["Other / Enter city manually"];
           city.innerHTML = `<option value="">Choose a city / town / village</option>${options.map(item=>`<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`).join("")}`;
           city.disabled = !wizard.values.district;
         }
@@ -1996,6 +2059,30 @@
     function completeOnboarding() {
       currentRole = wizard.role;
       activeNav = roleInfo[currentRole].nav[0][0];
+      const chosenCity = wizard.values.customCity || wizard.values.city;
+      if (chosenCity && chosenCity !== "Other / Enter city manually") {
+        const match = supportedCities.find(c => c.name.toLowerCase() === chosenCity.trim().toLowerCase());
+        if (match) {
+          setActiveCity(match.id);
+        } else {
+          const customId = chosenCity.trim().toLowerCase().replace(/[^a-z0-9]/g, "-");
+          if (!supportedCities.some(c => c.id === customId)) {
+            supportedCities.push({
+              id: customId,
+              name: chosenCity.trim(),
+              state: wizard.values.state || "India",
+              district: wizard.values.district || chosenCity.trim(),
+              status: "upcoming",
+              hospitalCount: 0,
+              bedCount: 0,
+              doctorCount: 0,
+              lat: 12.9716,
+              lng: 77.5946
+            });
+          }
+          setActiveCity(customId);
+        }
+      }
       render();
       const profileName = wizard.values.fullName || "CareSphere user";
       document.querySelector(".profile-name").textContent = profileName;
