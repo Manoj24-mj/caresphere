@@ -616,27 +616,17 @@
     .splash-actions-row {
       display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%;
     }
-    .splash-explore-btn {
-      flex: 1.2; min-height: 48px; padding: 0 22px; border-radius: 14px;
-      background: linear-gradient(135deg, #0B192C 0%, #173F78 50%, #2563EB 100%);
-      color: #FFFFFF !important; font-weight: 800; font-size: 14px; border: 0;
-      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
-      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
-      cursor: pointer; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .splash-explore-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 28px rgba(37, 99, 235, 0.45);
-    }
     .splash-profile-btn {
-      flex: 1; min-height: 48px; padding: 0 18px; border-radius: 14px;
-      background: #FFFFFF; border: 2px solid #CBD5E1;
-      color: #0F172A !important; font-weight: 800; font-size: 13.5px;
-      cursor: pointer; transition: all 0.2s;
-      box-shadow: 0 4px 12px rgba(16, 27, 53, 0.06);
+      min-height: 48px; padding: 0 32px; border-radius: 14px;
+      background: linear-gradient(135deg, #0B192C 0%, #173F78 50%, #2563EB 100%);
+      color: #FFFFFF !important; font-weight: 800; font-size: 14.5px; border: 0;
+      cursor: pointer; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
     }
     .splash-profile-btn:hover {
-      background: #F8FAFD; border-color: #3B82F6; color: #1D4ED8 !important;
+      transform: translateY(-2px);
+      box-shadow: 0 10px 28px rgba(37, 99, 235, 0.45);
     }
     .splash-lang-bar {
       display: inline-flex; align-items: center; gap: 4px; padding: 4px;
@@ -652,20 +642,6 @@
       background: #0B192C; color: #FFFFFF !important;
     }
 
-    .skip-intro {
-      position: absolute; top: max(20px, env(safe-area-inset-top));
-      right: max(24px, env(safe-area-inset-right));
-      z-index: 10; padding: 9px 18px; border-radius: 24px;
-      background: #FFFFFF; backdrop-filter: blur(8px);
-      border: 1.5px solid #CBD5E1; color: #0F172A !important;
-      font-size: 13px; font-weight: 750; cursor: pointer;
-      box-shadow: 0 4px 14px rgba(16, 27, 53, 0.08);
-      transition: all 0.2s ease;
-    }
-    .skip-intro:hover {
-      background: #FFFFFF; color: #101B35; border-color: #93C5FD;
-      box-shadow: 0 4px 12px rgba(16, 27, 53, 0.1);
-    }
     .welcome-screen { display: none; }
 /* Onboarding Shell & Role Cards */
     .onboarding { position: fixed; inset: 0; z-index: 50; overflow-y: auto; background: var(--canvas); display: none; }
@@ -1047,7 +1023,6 @@
       </div>
       <div class="splash-controls">
         <div class="splash-actions-row">
-          <button class="continue-button splash-explore-btn" id="exploreButton" type="button">Explore as a patient <span class="continue-arrow" aria-hidden="true">→</span></button>
           <button class="welcome-profile-button splash-profile-btn" id="continueButton" type="button">Create a profile</button>
         </div>
         <div class="splash-lang-bar">
@@ -1057,7 +1032,6 @@
         </div>
       </div>
     </div>
-    <button class="skip-intro" id="skipIntro" type="button">Skip animation</button>
   </section>
   <div class="app" id="careApp" aria-hidden="true" inert>
     <aside class="sidebar">
@@ -3702,9 +3676,7 @@
         }
       }
     });
-    document.getElementById("exploreButton")?.addEventListener("click", openPatientDashboard);
     document.getElementById("continueButton")?.addEventListener("click", enterCareSphere);
-    document.getElementById("skipIntro")?.addEventListener("click", () => openPatientDashboard());
     document.getElementById("replayIntroBtn")?.addEventListener("click", replayIntroAnimation);
     document.getElementById("brandLogoBtn")?.addEventListener("click", (e) => { e.preventDefault(); replayIntroAnimation(); });
     document.querySelector(".mobile-brand")?.addEventListener("click", replayIntroAnimation);

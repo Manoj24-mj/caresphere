@@ -25,7 +25,7 @@ function continueToOnboarding() {
   window.location.href = "onboarding.html";
 }
 
-document.getElementById("skip").addEventListener("click", () => showWelcome(true));
+document.getElementById("skip")?.addEventListener("click", () => showWelcome(true));
 continueButton.addEventListener("click", continueToOnboarding);
 document.addEventListener("keydown", event => {
   if (event.key === "Escape" && !experience.classList.contains("ready")) {
