@@ -700,6 +700,28 @@
     .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
     .field { display: grid; gap: 6px; color: #475569; font-size: 12px; font-weight: 650; }
     .field.full { grid-column: 1 / -1; }
+    .required-star {
+      color: #DC2626;
+      font-weight: 800;
+      margin-left: 3px;
+      font-size: 13px;
+      display: inline-block;
+      vertical-align: baseline;
+    }
+    .req-legend {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      color: #475569;
+      font-weight: 600;
+      margin-bottom: 14px;
+      padding: 4px 10px;
+      background: rgba(220, 38, 38, 0.05);
+      border: 1px solid rgba(220, 38, 38, 0.18);
+      border-radius: 6px;
+      width: fit-content;
+    }
     .field-control {
       width: 100%; min-height: 42px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px;
       background: white; color: var(--ink); font-size: 12.5px; outline: none;
@@ -1161,7 +1183,7 @@
     ];
     const roleSteps = {
       patient:{title:"Your care profile",description:"Your patient account is part of the shared CareSphere network.",fields:[
-        {id:"accountType",label:"I am registering as",type:"select",options:["Patient","Parent / guardian","Caregiver"]},
+        {id:"accountType",label:"I am registering as",type:"select",required:true,options:["Patient","Parent / guardian","Caregiver"]},
         {id:"profileNote",type:"note",text:"Your patient profile can connect appointments, medical records, insurance and government schemes in one CareSphere account."}
       ],medical:[
         {id:"bloodGroup",label:"Blood group",type:"select",options:["A+","A−","B+","B−","AB+","AB−","O+","O−","Unknown","Prefer not to say"]},
@@ -1240,7 +1262,7 @@
       ]},
       ambulance:{title:"Emergency response details",description:"Location sharing is optional and can be used for active emergency coordination only.",fields:[
         {id:"staffId",label:"Staff ID",type:"text",required:true},
-        {id:"designation",label:"Designation",type:"select",options:["Driver","EMT","Paramedic","Other"]},
+        {id:"designation",label:"Designation",type:"select",required:true,options:["Driver","EMT","Paramedic","Other"]},
         {id:"certification",label:"Certification",type:"text"},
         {id:"experience",label:"Years of experience",type:"number",min:"0",max:"70"},
         {id:"organization",label:"Ambulance organization / hospital",type:"text",required:true},
@@ -1722,7 +1744,7 @@
 
     function inputAttributes(field) {
       const birthDateLimit = field.id === "dateOfBirth" ? `max="${new Date().toISOString().slice(0,10)}"` : "";
-      return `${field.required ? "required" : ""} ${field.placeholder ? `placeholder="${escapeHtml(field.placeholder)}"` : ""}
+      return `${field.required ? 'required aria-required="true"' : ""} ${field.placeholder ? `placeholder="${escapeHtml(field.placeholder)}"` : ""}
         ${field.pattern ? `pattern="${escapeHtml(field.pattern)}"` : ""} ${field.min ? `min="${escapeHtml(field.min)}"` : ""}
         ${field.max ? `max="${escapeHtml(field.max)}"` : ""} ${field.maxlength ? `maxlength="${escapeHtml(field.maxlength)}"` : ""}
         ${field.accept ? `accept="${escapeHtml(field.accept)}"` : ""} ${birthDateLimit}`;
@@ -1753,7 +1775,8 @@
         control = `<input class="field-control" id="${field.id}" name="${field.id}" type="${type}" value="${type === "file" ? "" : escapeHtml(value)}" ${inputAttributes(field)}>`;
       }
       const label = field.id === "email" && ["government","admin"].includes(wizard.role) ? "Official email address" : field.label;
-      let markup = `<label class="field ${full}" ${field.type === "checkboxes" ? "" : `for="${field.id}"`}><span>${escapeHtml(label)}</span>${control}${hint}</label>`;
+      const reqStar = field.required ? ' <span class="required-star" aria-hidden="true" title="Required field">*</span>' : "";
+      let markup = `<label class="field ${full}" ${field.type === "checkboxes" ? "" : `for="${field.id}"`}><span>${escapeHtml(label)}${reqStar}</span>${control}${hint}</label>`;
       if (field.conditional) {
         markup = `<div class="conditional-fields ${full}" data-condition-id="${escapeHtml(field.conditional[0])}" data-condition-value="${escapeHtml(field.conditional[1])}">${markup}</div>`;
       }
@@ -1825,9 +1848,10 @@
 
     function renderConsent() {
       return `<div class="privacy-note"><strong>Information in this prototype</strong><br>CareSphere uses your details to set up one account and personalize its role-specific experience. Contact details support account access; location helps connect you with relevant services; medical details are optional and sensitive; professional and organization details are used to request verification. Production access would depend on role-based authorization and verified permissions.</div>
+        <div class="req-legend" style="margin-top:14px;"><span class="required-star">*</span> Required agreements to activate account</div>
         <div class="consent-list">
-          <label class="consent-item"><input type="checkbox" name="agreeTerms" ${wizard.values.agreeTerms ? "checked" : ""} required><span>I agree to the CareSphere Terms and Conditions. <strong>(Required)</strong></span></label>
-          <label class="consent-item"><input type="checkbox" name="agreeServices" ${wizard.values.agreeServices ? "checked" : ""} required><span>I consent to the use of my information for the healthcare services associated with my selected role. <strong>(Required)</strong></span></label>
+          <label class="consent-item"><input type="checkbox" name="agreeTerms" ${wizard.values.agreeTerms ? "checked" : ""} required><span>I agree to the CareSphere Terms and Conditions. <span class="required-star" aria-hidden="true">*</span> <strong style="color:#DC2626;font-size:11px;">(Required)</strong></span></label>
+          <label class="consent-item"><input type="checkbox" name="agreeServices" ${wizard.values.agreeServices ? "checked" : ""} required><span>I consent to the use of my information for the healthcare services associated with my selected role. <span class="required-star" aria-hidden="true">*</span> <strong style="color:#DC2626;font-size:11px;">(Required)</strong></span></label>
           <label class="consent-item"><input type="checkbox" name="shareSensitive" ${wizard.values.shareSensitive ? "checked" : ""}><span>I understand that medical information is sensitive, optional, and should only be shared with authorized care teams.</span></label>
         </div>`;
     }
@@ -1855,10 +1879,11 @@
       const step = wizard.step;
       const progress = Math.round((step / (wizardStepNames.length - 1)) * 100);
       const fields = fieldsForStep(step);
+      const hasRequired = fields.some(f => f.required);
       let body;
       if (step === 5) body = renderConsent();
       else if (step === 6) body = reviewMarkup();
-      else body = `<div class="form-grid">${fields.map(renderField).join("")}</div>`;
+      else body = `${hasRequired ? '<div class="req-legend"><span class="required-star">*</span> Indicates required fields</div>' : ''}<div class="form-grid">${fields.map(renderField).join("")}</div>`;
       const isCreated = step === 7;
       const footer = isCreated ? "" : `<div class="onboarding-actions wizard-actions">
         <button class="onboarding-back" type="button" data-onboarding-action="${step === 0 ? "roles" : "back"}">←&nbsp; ${step === 0 ? "Change role" : "Back"}</button>
@@ -2960,13 +2985,14 @@
         <p class="service-notice warning"><strong>Emergency Notice:</strong> Submitting prepares hospital triage and notifies the nearest response dispatch center. If symptoms are critical, keep your phone free for incoming dispatch calls.</p>
         <form class="detail-panel" id="ambulanceRequestForm">
           <h2>Request &amp; Triage Details</h2>
+          <div class="req-legend"><span class="required-star">*</span> Indicates required fields for emergency dispatch</div>
           <div class="service-form">
-            <label>Pickup Location (Street, Landmark, City)<input class="service-form-control" name="pickup" required value="${escapeHtml(r.pickup)}" placeholder="e.g. Indiranagar 100ft Road, Bengaluru"></label>
-            <label>Emergency Type<select class="service-form-control" name="emergencyType">${["Medical emergency", "Accident / trauma", "Cardiac / chest pain", "Pregnancy / delivery complication", "Patient transfer"].map(x => `<option ${r.emergencyType === x ? "selected" : ""}>${x}</option>`).join("")}</select></label>
-            <label>Destination Hospital<select class="service-form-control" name="destination">${serviceHospitals.map(h => `<option ${r.destination === h.name ? "selected" : ""}>${h.name}</option>`).join("")}</select></label>
-            <label>Patient Full Name<input class="service-form-control" name="patientName" value="${escapeHtml(r.patientName)}" placeholder="Patient name"></label>
-            <label>Contact Phone Number<input class="service-form-control" name="contact" type="tel" value="${escapeHtml(r.contact)}" placeholder="+91 98450 12345" required></label>
-            <label class="full">Patient Condition / Symptoms (Optional)<textarea class="service-form-control" name="notes" placeholder="Briefly describe conscious status, symptoms or oxygen requirements">${escapeHtml(r.notes)}</textarea></label>
+            <label><span>Pickup Location (Street, Landmark, City) <span class="required-star" aria-hidden="true">*</span></span><input class="service-form-control" name="pickup" required value="${escapeHtml(r.pickup)}" placeholder="e.g. Indiranagar 100ft Road, Bengaluru"></label>
+            <label><span>Emergency Type <span class="required-star" aria-hidden="true">*</span></span><select class="service-form-control" name="emergencyType" required>${["Medical emergency", "Accident / trauma", "Cardiac / chest pain", "Pregnancy / delivery complication", "Patient transfer"].map(x => `<option ${r.emergencyType === x ? "selected" : ""}>${x}</option>`).join("")}</select></label>
+            <label><span>Destination Hospital <span class="required-star" aria-hidden="true">*</span></span><select class="service-form-control" name="destination" required>${serviceHospitals.map(h => `<option ${r.destination === h.name ? "selected" : ""}>${h.name}</option>`).join("")}</select></label>
+            <label><span>Patient Full Name <span class="required-star" aria-hidden="true">*</span></span><input class="service-form-control" name="patientName" required value="${escapeHtml(r.patientName)}" placeholder="Patient name"></label>
+            <label><span>Contact Phone Number <span class="required-star" aria-hidden="true">*</span></span><input class="service-form-control" name="contact" type="tel" value="${escapeHtml(r.contact)}" placeholder="+91 98450 12345" required></label>
+            <label class="full"><span>Patient Condition / Symptoms (Optional)</span><textarea class="service-form-control" name="notes" placeholder="Briefly describe conscious status, symptoms or oxygen requirements">${escapeHtml(r.notes)}</textarea></label>
           </div>
           <div class="service-actions" style="margin-top:18px;">
             <button class="button emergency" type="submit">🚨 Submit Emergency Dispatch Request</button>
@@ -3324,10 +3350,10 @@
             </a>
           </div>
           <div class="emergency-info"><strong>Emergency Protocol:</strong> In an active life-threatening medical emergency, call 108 or 112 immediately. This digital interface alerts nearby hospitals to prepare bed readiness.</div>
-          <label class="form-field">Emergency situation
+          <label class="form-field"><span>Emergency situation <span class="required-star" aria-hidden="true">*</span></span>
             <select><option>Critical Medical Emergency</option><option>Severe Road Accident / Trauma</option><option>Cardiac / Chest Pain Symptoms</option><option>Maternity / Delivery Complication</option><option>Ambulance Dispatch Request</option></select>
           </label>
-          <label class="form-field">Incident location
+          <label class="form-field"><span>Incident location <span class="required-star" aria-hidden="true">*</span></span>
             <input value="${getActiveCity().name} · Auto-detected Regional Node" aria-label="Incident location">
           </label>
           <div class="modal-actions">
@@ -3340,16 +3366,17 @@
         const doctorName = data.doctorName || "Dr. Priya Sharma · Cardiology";
         overlays.innerHTML = `<div class="modal-backdrop" data-dismiss="true"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
           <div class="modal-head"><div><div class="modal-eyebrow">APPOINTMENT BOOKING</div><h2 id="modalTitle">Request an Appointment</h2><p>Select your consultation date and preferred time slot.</p></div><button class="close-button" type="button" aria-label="Close" data-action="close">×</button></div>
-          <label class="form-field">Selected Clinician
+          <div class="req-legend"><span class="required-star">*</span> Indicates required booking fields</div>
+          <label class="form-field"><span>Selected Clinician</span>
             <input value="${escapeHtml(doctorName)}" readonly style="background:#F8FAFD;font-weight:700;">
           </label>
-          <label class="form-field">Preferred consultation date
-            <input type="date" value="2026-11-20">
+          <label class="form-field"><span>Preferred consultation date <span class="required-star" aria-hidden="true">*</span></span>
+            <input type="date" value="2026-11-20" required>
           </label>
-          <label class="form-field">Preferred time slot
-            <select><option>10:00 AM – 10:30 AM (Morning OPD)</option><option>11:30 AM – 12:00 PM (Morning OPD)</option><option>02:00 PM – 02:30 PM (Afternoon OPD)</option><option>04:30 PM – 05:00 PM (Evening OPD)</option></select>
+          <label class="form-field"><span>Preferred time slot <span class="required-star" aria-hidden="true">*</span></span>
+            <select required><option>10:00 AM – 10:30 AM (Morning OPD)</option><option>11:30 AM – 12:00 PM (Morning OPD)</option><option>02:00 PM – 02:30 PM (Afternoon OPD)</option><option>04:30 PM – 05:00 PM (Evening OPD)</option></select>
           </label>
-          <label class="form-field">Reason for visit (optional)
+          <label class="form-field"><span>Reason for visit (optional)</span>
             <input placeholder="e.g. Regular health checkup or blood pressure review" aria-label="Reason for visit">
           </label>
           <div class="modal-actions">
@@ -3383,14 +3410,15 @@
         overlays.innerHTML = `<div class="modal-backdrop" data-dismiss="true"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
           <div class="modal-head"><div><div class="modal-eyebrow">HEALTH VAULT UPLOAD</div><h2 id="modalTitle">Upload Medical Document</h2><p>Attach a prescription, lab report, discharge summary or immunization card.</p></div><button class="close-button" type="button" aria-label="Close" data-action="close">×</button></div>
           <form id="uploadDocForm">
-            <label class="form-field">Document Title / Description
+            <div class="req-legend"><span class="required-star">*</span> Indicates required fields</div>
+            <label class="form-field"><span>Document Title / Description <span class="required-star" aria-hidden="true">*</span></span>
               <input name="docTitle" placeholder="e.g. Echo_Cardiogram_Report.pdf" required>
             </label>
-            <label class="form-field">Document Category
-              <select name="docCategory"><option>Lab Report</option><option>Prescription</option><option>Discharge Summary</option><option>Immunization Card</option><option>Insurance / ID</option></select>
+            <label class="form-field"><span>Document Category <span class="required-star" aria-hidden="true">*</span></span>
+              <select name="docCategory" required><option>Lab Report</option><option>Prescription</option><option>Discharge Summary</option><option>Immunization Card</option><option>Insurance / ID</option></select>
             </label>
-            <label class="form-field">Select File (PDF, PNG, JPG)
-              <input type="file" name="docFile" accept=".pdf,.png,.jpg,.jpeg">
+            <label class="form-field"><span>Select File (PDF, PNG, JPG) <span class="required-star" aria-hidden="true">*</span></span>
+              <input type="file" name="docFile" accept=".pdf,.png,.jpg,.jpeg" required>
             </label>
             <p style="font-size:12.5px;color:#64748B;">🔒 Stored locally in your client-side encrypted health vault. Not accessible to clinicians without your explicit 6-digit access pass.</p>
             <div class="modal-actions">
@@ -3404,23 +3432,24 @@
         overlays.innerHTML = `<div class="modal-backdrop" data-dismiss="true"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
           <div class="modal-head"><div><div class="modal-eyebrow">HOSPITAL STAFF PORTAL SIMULATION</div><h2 id="modalTitle">Update Bed Capacity</h2><p>Hospital: ${hospital.name}</p></div><button class="close-button" type="button" aria-label="Close" data-action="close">×</button></div>
           <form id="simBedsForm" data-hospital-id="${hospital.id}">
+            <div class="req-legend"><span class="required-star">*</span> Indicates required capacity inputs</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-              <label class="form-field">General Beds Available
+              <label class="form-field"><span>General Beds Available <span class="required-star" aria-hidden="true">*</span></span>
                 <input type="number" name="genAvail" value="${hospital.beds.General[0]}" min="0" max="${hospital.beds.General[1]}" required>
               </label>
-              <label class="form-field">General Beds Total
+              <label class="form-field"><span>General Beds Total</span>
                 <input type="number" name="genTotal" value="${hospital.beds.General[1]}" readonly style="background:#F8FAFD;">
               </label>
-              <label class="form-field">ICU Beds Available
+              <label class="form-field"><span>ICU Beds Available <span class="required-star" aria-hidden="true">*</span></span>
                 <input type="number" name="icuAvail" value="${hospital.beds.ICU[0]}" min="0" max="${hospital.beds.ICU[1]}" required>
               </label>
-              <label class="form-field">ICU Beds Total
+              <label class="form-field"><span>ICU Beds Total</span>
                 <input type="number" name="icuTotal" value="${hospital.beds.ICU[1]}" readonly style="background:#F8FAFD;">
               </label>
-              <label class="form-field">Emergency Beds Available
+              <label class="form-field"><span>Emergency Beds Available <span class="required-star" aria-hidden="true">*</span></span>
                 <input type="number" name="emgAvail" value="${hospital.beds.Emergency[0]}" min="0" max="${hospital.beds.Emergency[1]}" required>
               </label>
-              <label class="form-field">Emergency Beds Total
+              <label class="form-field"><span>Emergency Beds Total</span>
                 <input type="number" name="emgTotal" value="${hospital.beds.Emergency[1]}" readonly style="background:#F8FAFD;">
               </label>
             </div>
@@ -3434,10 +3463,11 @@
         overlays.innerHTML = `<div class="modal-backdrop" data-dismiss="true"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
           <div class="modal-head"><div><div class="modal-eyebrow">BLOOD BANK STAFF SIMULATION</div><h2 id="modalTitle">Update Blood Stock Units</h2><p>Facility: ${escapeHtml(data.facility || "Blood Bank")}</p></div><button class="close-button" type="button" aria-label="Close" data-action="close">×</button></div>
           <form id="simBloodForm" data-group="${data.group}">
-            <label class="form-field">Blood Group
+            <div class="req-legend"><span class="required-star">*</span> Indicates required stock input</div>
+            <label class="form-field"><span>Blood Group</span>
               <input value="${data.group}" readonly style="background:#F8FAFD;font-weight:800;">
             </label>
-            <label class="form-field">Available Verified Units
+            <label class="form-field"><span>Available Verified Units <span class="required-star" aria-hidden="true">*</span></span>
               <input type="number" name="bloodUnits" value="12" min="0" max="100" required>
             </label>
             <div class="modal-actions">
@@ -3451,10 +3481,11 @@
         overlays.innerHTML = `<div class="modal-backdrop" data-dismiss="true"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
           <div class="modal-head"><div><div class="modal-eyebrow">PHARMACY INVENTORY SIMULATION</div><h2 id="modalTitle">Update Medicine Stock</h2><p>Medicine: ${med.name} ${med.strength}</p></div><button class="close-button" type="button" aria-label="Close" data-action="close">×</button></div>
           <form id="simMedsForm" data-medicine-id="${med.id}">
-            <label class="form-field">Stock Status
-              <select name="availability"><option value="Available">Available</option><option value="Limited">Limited</option><option value="Unavailable">Unavailable</option></select>
+            <div class="req-legend"><span class="required-star">*</span> Indicates required inventory inputs</div>
+            <label class="form-field"><span>Stock Status <span class="required-star" aria-hidden="true">*</span></span>
+              <select name="availability" required><option value="Available">Available</option><option value="Limited">Limited</option><option value="Unavailable">Unavailable</option></select>
             </label>
-            <label class="form-field">Verified Quantity In Stock
+            <label class="form-field"><span>Verified Quantity In Stock <span class="required-star" aria-hidden="true">*</span></span>
               <input name="quantity" value="${escapeHtml(med.quantity)}" required>
             </label>
             <div class="modal-actions">
