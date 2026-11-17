@@ -287,6 +287,31 @@
 }
 
 /* 2. Floating 3D Guide Assistant Trigger */
+body.has-intro .guide-floating-trigger,
+body.has-intro #floatingGuideAssistant,
+body.has-intro .guide-drawer,
+body.has-intro .guide-backdrop,
+body.has-intro .guide-modal-overlay,
+body.has-intro #guideFloatingToast,
+body.has-intro #guideOnboardingOverlay,
+.onboarding.is-open ~ .guide-floating-trigger,
+.onboarding.is-open ~ #floatingGuideAssistant,
+.onboarding.is-open ~ .guide-drawer,
+.onboarding.is-open ~ .guide-backdrop,
+.onboarding.is-open ~ .guide-modal-overlay,
+.onboarding.is-open ~ #guideFloatingToast,
+.onboarding.is-open ~ #guideOnboardingOverlay,
+#careApp[aria-hidden="true"] ~ .guide-floating-trigger,
+#careApp[aria-hidden="true"] ~ #floatingGuideAssistant,
+#careApp[inert] ~ .guide-floating-trigger,
+#careApp[inert] ~ #floatingGuideAssistant,
+body:has(#onboarding.is-open) .guide-floating-trigger,
+body:has(#onboarding.is-open) #floatingGuideAssistant,
+body:has(#brandExperience:not([hidden])) .guide-floating-trigger,
+body:has(#brandExperience:not([hidden])) #floatingGuideAssistant {
+  display: none !important;
+}
+
 .guide-floating-trigger {
   position: fixed;
   bottom: 24px;

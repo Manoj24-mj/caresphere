@@ -573,9 +573,25 @@
       // Inject slide-over guide drawer
       this.injectDrawer();
 
+      // Listen for visibility state and observe DOM to restrict guide to main app page only
+      this.updateVisibility();
+      try {
+        const obs = new MutationObserver(() => this.updateVisibility());
+        obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+        const appEl = document.getElementById('careApp');
+        if (appEl) obs.observe(appEl, { attributes: true, attributeFilter: ['aria-hidden', 'inert', 'style'] });
+        const onbEl = document.getElementById('onboarding');
+        if (onbEl) obs.observe(onbEl, { attributes: true, attributeFilter: ['class', 'style'] });
+        const expEl = document.getElementById('brandExperience');
+        if (expEl) obs.observe(expEl, { attributes: true, attributeFilter: ['hidden', 'aria-hidden', 'class'] });
+      } catch (err) {
+        window.setInterval(() => this.updateVisibility(), 800);
+      }
+
       // Keyboard shortcut listener (Press "?" or "Shift+/" to toggle guide, "Esc" to close)
       document.addEventListener('keydown', (e) => {
         if (e.key === '?' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) {
+          if (!this.isMainAppVisible()) return;
           e.preventDefault();
           this.toggleDrawer();
         } else if (e.key === 'Escape') {
@@ -586,6 +602,27 @@
           }
         }
       });
+    },
+
+    isMainAppVisible: function() {
+      const intro = document.getElementById('brandExperience');
+      if (intro && !intro.hidden && intro.getAttribute('aria-hidden') !== 'true') return false;
+      if (document.body.classList.contains('has-intro')) return false;
+      const onboarding = document.getElementById('onboarding');
+      if (onboarding && onboarding.classList.contains('is-open')) return false;
+      const careApp = document.getElementById('careApp');
+      if (careApp && (careApp.getAttribute('aria-hidden') === 'true' || careApp.hasAttribute('inert'))) return false;
+      return true;
+    },
+
+    updateVisibility: function() {
+      const trigger = document.getElementById('floatingGuideAssistant');
+      if (!trigger) return;
+      const isMain = this.isMainAppVisible();
+      trigger.style.display = isMain ? 'flex' : 'none';
+      if (!isMain && this.state.drawerOpen) {
+        this.closeDrawer();
+      }
     },
 
     // Helper: translate registry string
@@ -851,6 +888,7 @@
       });
 
       document.body.appendChild(trigger);
+      this.updateVisibility();
     },
 
     // 6. Inject Slide-over Contextual Guide Drawer
@@ -920,6 +958,7 @@
 
     // 7. Toggle / Open Drawer with current context
     toggleDrawer: function() {
+      if (!this.isMainAppVisible()) return;
       if (this.state.drawerOpen) {
         this.closeDrawer();
       } else {
@@ -928,6 +967,7 @@
     },
 
     openDrawer: function(contextKey) {
+      if (!this.isMainAppVisible()) return;
       this.state.drawerOpen = true;
       const backdrop = document.getElementById('careGuideBackdrop');
       const drawer = document.getElementById('careGuideDrawer');

@@ -1610,6 +1610,7 @@
       app.removeAttribute("inert");
       document.body.classList.remove("has-intro");
       document.getElementById("roleSelect").value = currentRole;
+      window.CareSphereGuide?.updateVisibility?.();
     }
 
     function replayIntroAnimation() {
@@ -1619,6 +1620,7 @@
       experience.classList.remove("is-exiting");
       experience.removeAttribute("aria-hidden");
       document.body.classList.add("has-intro");
+      window.CareSphereGuide?.updateVisibility?.();
 
       // Trigger reflow to restart CSS animations
       const stage = experience.querySelector(".network-stage");
@@ -1662,6 +1664,7 @@
       onboarding.setAttribute("aria-hidden", "false");
       document.getElementById("careApp").setAttribute("aria-hidden", "true");
       document.getElementById("careApp").setAttribute("inert", "");
+      window.CareSphereGuide?.updateVisibility?.();
       renderOnboarding();
       window.setTimeout(() => document.getElementById("rolePickerTitle")?.focus({preventScroll:true}), 40);
     }
@@ -2015,28 +2018,14 @@
         console.error("CareSphere completed profile status could not be saved in this browser tab.", error);
       }
       wizard.screen = "dashboard";
-
-      // Intelligent 3D User Guide shown after taking all details and before main page:
+      document.getElementById("careApp").setAttribute("aria-hidden", "false");
+      document.getElementById("careApp").removeAttribute("inert");
+      document.getElementById("profileReminder").hidden = true;
+      document.body.classList.remove("has-intro");
+      document.getElementById("pageTitle")?.focus({preventScroll:true});
       if (window.CareSphereGuide) {
-        document.getElementById("careApp").setAttribute("aria-hidden","true");
-        document.getElementById("careApp").setAttribute("inert", "");
-        window.CareSphereGuide.showPostOnboardingGuide({
-          name: profileName,
-          role: currentRole,
-          language: languageLabels[wizard.values.language] || "en"
-        }, currentRole, function() {
-          document.getElementById("careApp").setAttribute("aria-hidden","false");
-          document.getElementById("careApp").removeAttribute("inert");
-          document.getElementById("profileReminder").hidden = true;
-          document.body.classList.remove("has-intro");
-          document.getElementById("pageTitle")?.focus({preventScroll:true});
-          window.CareSphereGuide.updateContext('home', currentRole);
-        });
-      } else {
-        document.getElementById("careApp").setAttribute("aria-hidden","false");
-        document.getElementById("careApp").removeAttribute("inert");
-        document.getElementById("profileReminder").hidden = true;
-        document.getElementById("pageTitle")?.focus({preventScroll:true});
+        window.CareSphereGuide.updateContext('home', currentRole);
+        window.CareSphereGuide.updateVisibility?.();
       }
     }
 
@@ -2084,6 +2073,10 @@
       document.getElementById("careApp").removeAttribute("inert");
       document.body.classList.remove("has-intro");
       wizard.screen = "dashboard";
+      if (window.CareSphereGuide) {
+        window.CareSphereGuide.updateContext('home', currentRole);
+        window.CareSphereGuide.updateVisibility?.();
+      }
     }
 
     function resumeInlineOnboarding() {
@@ -2427,6 +2420,19 @@
               <p style="font-size:12.5px;color:#64748B;margin:0 0 12px;">Generate temporary 6-digit access code for your consulting clinician.</p>
               <button class="button secondary small" type="button" data-service-route="records" data-records-tab="profile">Access Control</button>
             </article>
+          </div>
+        </section>
+
+        <section class="patient-section" aria-labelledby="guide-card-title">
+          <div class="guide-home-card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;padding:20px 24px;border-radius:18px;background:linear-gradient(135deg, #0F172A 0%, #1E3A8A 100%);color:#FFFFFF;box-shadow:0 8px 24px rgba(15,23,42,0.14);">
+            <div style="display:flex;align-items:center;gap:14px;">
+              <span style="font-size:32px;line-height:1;" aria-hidden="true">💡</span>
+              <div>
+                <h3 id="guide-card-title" style="margin:0;font-size:16px;font-weight:750;color:#FFFFFF;">CareSphere Interactive User Guide</h3>
+                <p style="margin:4px 0 0;font-size:13px;color:#93C5FD;line-height:1.5;">Learn how to navigate hospitals, bed availability, doctors, medicines, blood stock, and emergency ambulance services.</p>
+              </div>
+            </div>
+            <button class="button" type="button" data-action="guide" style="white-space:nowrap;background:#3B82F6;color:#FFFFFF;border:0;font-weight:750;box-shadow:0 4px 12px rgba(59,130,246,0.35);">Open Guide &amp; Tour&nbsp; →</button>
           </div>
         </section>`;
     }
@@ -3725,22 +3731,12 @@
       document.getElementById("brandExperience").setAttribute("aria-hidden","true");
       document.getElementById("onboarding").setAttribute("aria-hidden","true");
 
-      // Intelligent User Guide shown after taking all details and before main page:
-      const guideShown = sessionStorage.getItem("caresphere-guide-post-shown") === "1";
-      if (!guideShown && profile && window.CareSphereGuide) {
-        sessionStorage.setItem("caresphere-guide-post-shown", "1");
-        document.getElementById("careApp").setAttribute("aria-hidden","true");
-        document.getElementById("careApp").setAttribute("inert", "");
-        window.CareSphereGuide.showPostOnboardingGuide(profile, currentRole, function() {
-          document.getElementById("careApp").setAttribute("aria-hidden","false");
-          document.getElementById("careApp").removeAttribute("inert");
-          document.body.classList.remove("has-intro");
-          window.CareSphereGuide.updateContext('home', currentRole);
-        });
-      } else {
-        document.getElementById("careApp").setAttribute("aria-hidden","false");
-        document.getElementById("careApp").removeAttribute("inert");
-        document.body.classList.remove("has-intro");
+      document.getElementById("careApp").setAttribute("aria-hidden","false");
+      document.getElementById("careApp").removeAttribute("inert");
+      document.body.classList.remove("has-intro");
+      if (window.CareSphereGuide) {
+        window.CareSphereGuide.updateContext('home', currentRole);
+        window.CareSphereGuide.updateVisibility?.();
       }
 
       if (new URLSearchParams(window.location.search).get("emergency") === "1") openModal("sos");
