@@ -7,13 +7,15 @@
   const feature = document.body.dataset.feature;
   const params = new URLSearchParams(window.location.search);
   const titles = {
-    beds:["Find a Hospital","Search sample hospitals and check reported beds."],
-    doctors:["Find a Doctor","Browse sample doctors and preview an appointment request."],
-    medicines:["Check Medicines","Search sample medicine stock at nearby pharmacies."],
-    ambulances:["Emergency help","Preview nearby ambulance options. No vehicle will be sent."],
-    blood:["Find Blood","Check recent sample updates reported by blood banks."],
-    schemes:["Government Health Benefits","Explore support programmes and check official rules."],
-    search:["Search CareSphere","Search sample hospitals, doctors, beds, medicines, blood stock, ambulances and schemes."]
+    hospitals: ["Hospital Availability", "Search verified hospitals, facilities, addresses and directions."],
+    beds: ["Bed Availability", "Compare verified General, ICU and Emergency beds in your city."],
+    doctors: ["Doctor Availability", "Specialist directory, working hours, hospital affiliation and appointment preview."],
+    medicines: ["Medicine Availability", "Search medicine inventory across hospital pharmacies, suppliers and Jan Aushadhi Kendras."],
+    ambulances: ["Ambulance Services", "Preview nearby response options and emergency assistance."],
+    blood: ["Blood Availability", "Check live updates reported by blood banks with donor compatibility."],
+    records: ["Medical Records Management", "Private-by-default personal health vault, prescriptions, lab reports and security."],
+    search: ["Unified City Search", "Search hospitals, beds, doctors, blood stock, medicines, ambulances and records."],
+    schemes: ["Government Health Benefits", "Explore support programmes and check official rules."]
   };
   const state = {
     query: params.get("q") || "",
@@ -200,7 +202,7 @@
     const doctorCategory = category("doctor","doctors","physician","physicians");
     const bloodCategory = category("blood","bank","banks");
     const ambulanceCategory = category("ambulance","ambulances");
-    const schemeCategory = category("scheme","schemes","government");
+    const recordsCategory = category("record","records","prescription","prescriptions","report","reports");
     const results = [
       ...demo.hospitals.filter(item=>hospitalCategory||`${item.name} ${item.type} ${item.location}`.toLowerCase().includes(q)).map(item=>["Hospital",item.name,`${item.type} · ${item.distance} km`,"bed-availability.html"]),
       ...demo.hospitals.filter(()=>bedCategory||Boolean(typeQuery)).map(item=>["Bed availability",`${typeQuery||"All"} beds · ${item.name}`,`${item.distance} km · Sample counts`,"bed-availability.html"+(typeQuery?`?type=${encodeURIComponent(typeQuery)}`:"")]),
@@ -208,16 +210,89 @@
       ...demo.doctors.filter(item=>doctorCategory||`${item.name} ${item.specialty} ${item.facility}`.toLowerCase().includes(q)).map(item=>["Doctor",item.name,`${item.specialty} · ${item.facility} · ${item.distance} km`,"doctor-directory.html"+(doctorCategory?"":`?q=${encodeURIComponent(item.name)}`)]),
       ...demo.blood.filter(item=>bloodCategory||`${item.group} ${item.facility} ${item.location}`.toLowerCase().includes(q)).map(item=>["Blood",`${item.group} blood · ${item.facility}`,`${item.distance} km · ${item.status}`,"blood-availability.html"]),
       ...demo.ambulances.filter(item=>ambulanceCategory||`${item.id} ${item.type}`.toLowerCase().includes(q)).map(item=>["Ambulance",item.id,`${item.type} · ${item.distance} km · ${item.status}`,"ambulance-availability.html"]),
-      ...demo.schemes.filter(item=>schemeCategory||`${item.name} ${item.description}`.toLowerCase().includes(q)).map(item=>["Scheme",item.name,item.description,"government-schemes.html"])
+      ...(recordsCategory ? [["Medical Records","Personal Health Records & Prescriptions","Manage your private health vault","../index.html?dashboard=1&nav=records"]] : [])
     ];
     const rows = results.map(([kind,title,description,href])=>`<article class="resource-card"><div class="card-heading"><div><span class="eyebrow">${escapeHtml(kind)}</span><h2>${escapeHtml(title)}</h2><p>${escapeHtml(description)}</p></div></div><div class="card-actions"><a class="button secondary" href="${href}">View feature →</a></div></article>`).join("");
-    const content = `<div class="toolbar"><input type="search" aria-label="Search all sample services" placeholder="Try ICU, a hospital, blood group or scheme" data-filter="query" value="${escapeHtml(state.query)}"></div>
-      <p class="result-count">${results.length} sample result${results.length===1?"":"s"} ${q?"matched":"available to explore"}</p><section class="card-grid">${rows || '<p class="empty-state">No sample results matched. Try “ICU”, “doctor”, “blood”, or “scheme”.</p>'}</section>`;
+    const content = `<div class="toolbar"><input type="search" aria-label="Search all sample services" placeholder="Try ICU, a hospital, doctor or medicine" data-filter="query" value="${escapeHtml(state.query)}"></div>
+      <p class="result-count">${results.length} sample result${results.length===1?"":"s"} ${q?"matched":"available to explore"}</p><section class="card-grid">${rows || '<p class="empty-state">No sample results matched. Try “ICU”, “doctor”, “blood”, or “medicine”.</p>'}</section>`;
     return shell(titles.search[0],titles.search[1],content);
   }
 
+  function hospitalsPage() {
+    const q = state.query.trim().toLowerCase();
+    const hospitals = demo.hospitals.filter(h => !q || `${h.name} ${h.type} ${h.location} ${h.address}`.toLowerCase().includes(q));
+    const hosp3d = (window.CareSphere3D && window.CareSphere3D.svg) ? window.CareSphere3D.svg("hospital", { width: 36, height: 36 }) : "";
+    const cards = hospitals.map(h => `
+      <article class="resource-card">
+        <div class="card-heading">
+          <div style="display:flex;align-items:center;gap:12px">${hosp3d}<div><h2>${escapeHtml(h.name)}</h2><p>${escapeHtml(h.type)}</p></div></div>
+          ${statusPill(h.status)}
+        </div>
+        <div class="resource-meta"><span>📍 ${escapeHtml(h.address)}</span><span>🛣️ ${h.distance} km</span><span>📞 ${escapeHtml(h.phone)}</span></div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;">
+          ${(h.facilities || []).map(f => `<span style="padding:2px 8px;border-radius:6px;background:#EFF6FF;border:1px solid #BFDBFE;color:#1E40AF;font-size:11.5px;font-weight:700;">${escapeHtml(f)}</span>`).join("")}
+        </div>
+        <div class="card-actions">
+          <a class="button" href="bed-availability.html">Check Bed Counts</a>
+          <a class="button secondary" href="https://www.google.com/maps/search/?api=1&amp;query=${encodeURIComponent(`${h.name}, ${h.address}`)}" target="_blank" rel="noopener noreferrer">Get directions</a>
+        </div>
+      </article>`).join("");
+    const content = `<div class="toolbar"><input type="search" aria-label="Search hospitals" placeholder="Search hospital name or address" data-filter="query" value="${escapeHtml(state.query)}"></div>
+      <p class="result-count">${hospitals.length} verified hospital${hospitals.length===1?"":"s"} available in active city node</p>
+      <section class="card-grid">${cards || '<p class="empty-state">No hospitals matched your search.</p>'}</section>`;
+    return shell(titles.hospitals[0], titles.hospitals[1], content);
+  }
+
+  function recordsPage() {
+    const records = demo.medicalRecords;
+    const content = `
+      <div style="display:grid;gap:16px;margin-bottom:20px;">
+        <div style="padding:18px 22px;border-radius:16px;background:linear-gradient(135deg, #0F172A 0%, #1E3A8A 100%);color:#FFF;">
+          <h3 style="margin:0 0 6px;font-size:16px;font-weight:800;">🔒 Private by Default · End-to-End Client-Side Privacy</h3>
+          <p style="margin:0;font-size:13.5px;color:#E2E8F0;">Health records, diagnoses and prescriptions are stored locally in your private client-side vault.</p>
+        </div>
+        <section class="detail-panel">
+          <h3>Personal Health Profile</h3>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;margin-top:12px;">
+            <div style="padding:12px;background:#F8FAFD;border:1px solid #E2E8F0;border-radius:10px;"><strong>Blood Group:</strong> ${records.profile.bloodGroup}</div>
+            <div style="padding:12px;background:#F8FAFD;border:1px solid #E2E8F0;border-radius:10px;"><strong>Allergies:</strong> ${records.profile.allergies}</div>
+            <div style="padding:12px;background:#F8FAFD;border:1px solid #E2E8F0;border-radius:10px;"><strong>Chronic Conditions:</strong> ${records.profile.chronicConditions}</div>
+            <div style="padding:12px;background:#F8FAFD;border:1px solid #E2E8F0;border-radius:10px;"><strong>Emergency Contact:</strong> ${records.profile.emergencyContact}</div>
+          </div>
+        </section>
+        <section class="detail-panel">
+          <h3>Active Prescriptions</h3>
+          <div class="card-grid" style="margin-top:12px;">
+            ${records.prescriptions.map(p => `
+              <div style="padding:16px;border-radius:12px;background:#F8FAFD;border:1px solid #E2E8F0;">
+                <h4 style="margin:0 0 4px;font-size:15px;color:#0F172A;">${escapeHtml(p.medication)}</h4>
+                <p style="margin:0 0 6px;font-size:12.5px;color:#475569;">${p.form} · ${p.dosage}</p>
+                <p style="margin:0;font-size:12px;color:#64748B;">Dr: ${p.doctor} · ${p.facility}</p>
+              </div>
+            `).join("")}
+          </div>
+        </section>
+        <section class="detail-panel">
+          <h3>Diagnostic Lab Reports</h3>
+          <div class="card-grid" style="margin-top:12px;">
+            ${records.labReports.map(l => `
+              <div style="padding:16px;border-radius:12px;background:#F8FAFD;border:1px solid #E2E8F0;">
+                <h4 style="margin:0 0 4px;font-size:15px;color:#0F172A;">${escapeHtml(l.title)}</h4>
+                <p style="margin:0 0 6px;font-size:12.5px;color:#475569;">${l.lab} · ${l.date}</p>
+                <div style="font-size:12px;color:#1E40AF;font-weight:700;">${l.resultSummary}</div>
+              </div>
+            `).join("")}
+          </div>
+        </section>
+      </div>
+      <div class="card-actions">
+        <a class="button" href="../index.html?dashboard=1&amp;nav=records">Open Full Health Vault &amp; Upload Documents →</a>
+      </div>`;
+    return shell(titles.records[0], titles.records[1], content);
+  }
+
   function render(restoreFilter) {
-    const pages = {beds:bedsPage,doctors:doctorsPage,medicines:medicinesPage,ambulances:ambulancesPage,blood:bloodPage,schemes:schemesPage,search:searchPage};
+    const pages = {hospitals:hospitalsPage,beds:bedsPage,doctors:doctorsPage,medicines:medicinesPage,ambulances:ambulancesPage,blood:bloodPage,records:recordsPage,schemes:schemesPage,search:searchPage};
     const page = pages[feature];
     if (!page) {
       root.innerHTML = '<p class="empty-state">This feature page could not be loaded.</p>';
