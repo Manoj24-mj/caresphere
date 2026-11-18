@@ -1,0 +1,653 @@
+// CareSphere Database Schema - Prisma ORM
+// Configured for PostgreSQL with Normalized Relational Architecture
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// 1. ENUMS
+// ==========================================
+
+enum UserRole {
+  PATIENT
+  DOCTOR
+  NURSE
+  HOSPITAL_STAFF
+  BLOOD_BANK_STAFF
+  AMBULANCE_STAFF
+  SUPPLIER
+  GOVERNMENT
+  ADMINISTRATOR
+}
+
+enum BedCategoryCode {
+  GENERAL
+  ICU
+  EMERGENCY
+  PEDIATRIC
+  MATERNITY
+  ISOLATION
+}
+
+enum BloodGroup {
+  A_POSITIVE
+  A_NEGATIVE
+  B_POSITIVE
+  B_NEGATIVE
+  AB_POSITIVE
+  AB_NEGATIVE
+  O_POSITIVE
+  O_NEGATIVE
+}
+
+enum StockStatus {
+  AVAILABLE
+  LIMITED
+  UNAVAILABLE
+}
+
+enum AmbulanceType {
+  ADVANCED_LIFE_SUPPORT
+  BASIC_LIFE_SUPPORT
+  PATIENT_TRANSPORT
+}
+
+enum AmbulanceStatus {
+  AVAILABLE
+  ON_TRIP
+  MAINTENANCE
+  OFFLINE
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum EmergencyRequestStatus {
+  REQUESTED
+  DISPATCHED
+  EN_ROUTE
+  ARRIVED
+  COMPLETED
+  CANCELLED
+}
+
+enum RecordType {
+  DIAGNOSIS
+  PRESCRIPTION
+  LAB_REPORT
+  CONSULTATION
+  DISCHARGE_SUMMARY
+  IMMUNIZATION
+}
+
+// ==========================================
+// 2. CITY ENGINE (Core City-Based Architecture)
+// ==========================================
+
+model City {
+  id                 String              @id // e.g. "bengaluru", "mysuru", "mumbai"
+  name               String              @db.VarChar(100)
+  state              String              @db.VarChar(100)
+  district           String              @db.VarChar(100)
+  status             String              @default("active") @db.VarChar(20) // "active" | "upcoming"
+  latitude           Float?
+  longitude          Float?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  // Relationships
+  users              User[]
+  hospitals          Hospital[]
+  bloodBanks         BloodBank[]
+  ambulanceProviders AmbulanceProvider[]
+  ambulances         Ambulance[]
+  medicineInventories MedicineInventory[]
+
+  @@index([status])
+  @@index([state, district])
+  @@map("cities")
+}
+
+// ==========================================
+// 3. USER MANAGEMENT & AUTHENTICATION
+// ==========================================
+
+model User {
+  id                 String              @id @default(uuid())
+  email              String?             @unique @db.VarChar(150)
+  mobile             String              @unique @db.VarChar(20)
+  passwordHash       String              @db.VarChar(255)
+  role               UserRole            @default(PATIENT)
+  cityId             String?
+  isVerified         Boolean             @default(false)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  // Relationships
+  city               City?               @relation(fields: [cityId], references: [id])
+  profile            UserProfile?
+  doctorProfile      Doctor?
+  hospitalStaff      HospitalStaff?
+  medicalProfile     PatientMedicalProfile?
+  medicalRecords     MedicalRecord[]
+  prescriptions      Prescription[]
+  medicalDocuments   MedicalDocument[]
+  appointmentRequests AppointmentRequest[] @relation("PatientAppointments")
+  ambulanceRequests  AmbulanceRequest[]  @relation("PatientAmbulanceRequests")
+  grantedAccesses    MedicalRecordAccess[] @relation("PatientAccessGrants")
+  auditLogs          AuditLog[]
+
+  @@index([role])
+  @@index([cityId])
+  @@map("users")
+}
+
+model UserProfile {
+  id                 String              @id @default(uuid())
+  userId             String              @unique
+  fullName           String              @db.VarChar(150)
+  dateOfBirth        DateTime?
+  gender             String?             @db.VarChar(30)
+  address            String              @db.Text
+  pinCode            String              @db.VarChar(10)
+  profilePhotoUrl    String?             @db.VarChar(500)
+  preferredLanguage  String              @default("en") @db.VarChar(20) // "en", "kn", "hi"
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+// ==========================================
+// 4. HOSPITAL MANAGEMENT
+// ==========================================
+
+model Hospital {
+  id                 String              @id // e.g. "district-general"
+  cityId             String
+  name               String              @db.VarChar(200)
+  hospitalType       String              @db.VarChar(100) // e.g. "Government hospital"
+  address            String              @db.Text
+  locationArea       String              @db.VarChar(150) // e.g. "Central District, Bengaluru"
+  phone              String              @db.VarChar(30)
+  emergency24x7      Boolean             @default(true)
+  distanceKm         Float               @default(0.0)
+  latitude           Float?
+  longitude          Float?
+  status             String              @default("Available") @db.VarChar(50)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  // Relationships
+  city               City                @relation(fields: [cityId], references: [id])
+  facilities         HospitalFacility[]
+  staff              HospitalStaff[]
+  doctors            Doctor[]
+  beds               BedAvailability[]
+  bedHistory         BedAvailabilityHistory[]
+  bloodBanks         BloodBank[]
+  appointments       AppointmentRequest[]
+  destinedAmbulances AmbulanceRequest[]  @relation("DestinationHospital")
+
+  @@index([cityId])
+  @@index([status])
+  @@map("hospitals")
+}
+
+model HospitalFacility {
+  id                 String              @id @default(uuid())
+  hospitalId         String
+  name               String              @db.VarChar(100) // e.g. "24x7 Emergency", "ICU", "Blood Bank"
+
+  hospital           Hospital            @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+
+  @@unique([hospitalId, name])
+  @@map("hospital_facilities")
+}
+
+model HospitalStaff {
+  id                 String              @id @default(uuid())
+  hospitalId         String
+  userId             String              @unique
+  employeeId         String              @db.VarChar(100)
+  designation        String              @db.VarChar(100)
+  department         String              @db.VarChar(100)
+  createdAt          DateTime            @default(now())
+
+  hospital           Hospital            @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("hospital_staff")
+}
+
+// ==========================================
+// 5. BED MANAGEMENT (General, ICU, Emergency, etc.)
+// ==========================================
+
+model BedCategory {
+  id                 String              @id @default(uuid())
+  code               BedCategoryCode     @unique
+  name               String              @db.VarChar(100)
+  description        String?             @db.VarChar(255)
+
+  availabilities     BedAvailability[]
+  history            BedAvailabilityHistory[]
+
+  @@map("bed_categories")
+}
+
+model BedAvailability {
+  id                 String              @id @default(uuid())
+  hospitalId         String
+  categoryId         String
+  availableBeds      Int                 @default(0)
+  totalCapacity      Int                 @default(0)
+  occupiedBeds       Int                 @default(0)
+  updatedByUserId    String?
+  updatedAt          DateTime            @updatedAt
+
+  hospital           Hospital            @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  category           BedCategory         @relation(fields: [categoryId], references: [id])
+
+  @@unique([hospitalId, categoryId])
+  @@index([hospitalId])
+  @@index([categoryId])
+  @@map("bed_availabilities")
+}
+
+model BedAvailabilityHistory {
+  id                 String              @id @default(uuid())
+  hospitalId         String
+  categoryId         String
+  availableBeds      Int
+  totalCapacity      Int
+  occupiedBeds       Int
+  changedByUserId    String?
+  timestamp          DateTime            @default(now())
+
+  hospital           Hospital            @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  category           BedCategory         @relation(fields: [categoryId], references: [id])
+
+  @@index([hospitalId, timestamp])
+  @@map("bed_availability_histories")
+}
+
+// ==========================================
+// 6. DOCTOR MANAGEMENT
+// ==========================================
+
+model Specialization {
+  id                 String              @id @default(uuid())
+  name               String              @unique @db.VarChar(100) // e.g. "Cardiology", "Pediatrics"
+
+  doctors            Doctor[]
+
+  @@map("specializations")
+}
+
+model Doctor {
+  id                 String              @id // e.g. "dr-priya"
+  userId             String?             @unique
+  hospitalId         String
+  specializationId   String
+  name               String              @db.VarChar(150)
+  qualification      String              @db.VarChar(200)
+  department         String              @db.VarChar(150)
+  workingHours       String              @db.VarChar(100)
+  status             String              @default("Appointments available") @db.VarChar(100)
+  distanceKm         Float               @default(0.0)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  user               User?               @relation(fields: [userId], references: [id])
+  hospital           Hospital            @relation(fields: [hospitalId], references: [id])
+  specialization     Specialization      @relation(fields: [specializationId], references: [id])
+  schedules          DoctorSchedule[]
+  appointments       AppointmentRequest[]
+  prescriptionsWritten Prescription[]    @relation("DoctorPrescriptions")
+  authorizedAccesses MedicalRecordAccess[] @relation("DoctorAccessGrants")
+
+  @@index([hospitalId])
+  @@index([specializationId])
+  @@map("doctors")
+}
+
+model DoctorSchedule {
+  id                 String              @id @default(uuid())
+  doctorId           String
+  dayOfWeek          Int                 // 0 = Sunday, 1 = Monday ... 6 = Saturday
+  startTime          String              @db.VarChar(10) // e.g. "09:00"
+  endTime            String              @db.VarChar(10) // e.g. "13:30"
+  slotDurationMinutes Int                @default(15)
+  maxAppointments    Int                 @default(20)
+
+  doctor             Doctor              @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@index([doctorId, dayOfWeek])
+  @@map("doctor_schedules")
+}
+
+model AppointmentRequest {
+  id                 String              @id @default(uuid())
+  patientId          String
+  doctorId           String
+  hospitalId         String
+  appointmentDate    DateTime
+  timeSlot           String              @db.VarChar(50) // e.g. "10:30 AM"
+  reason             String?             @db.Text
+  status             AppointmentStatus   @default(PENDING)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  patient            User                @relation("PatientAppointments", fields: [patientId], references: [id])
+  doctor             Doctor              @relation(fields: [doctorId], references: [id])
+  hospital           Hospital            @relation(fields: [hospitalId], references: [id])
+
+  @@index([patientId])
+  @@index([doctorId, appointmentDate])
+  @@map("appointment_requests")
+}
+
+// ==========================================
+// 7. BLOOD MANAGEMENT
+// ==========================================
+
+model BloodBank {
+  id                 String              @id // e.g. "dgh-blood-bank"
+  hospitalId         String?
+  cityId             String
+  name               String              @db.VarChar(200)
+  locationArea       String              @db.VarChar(150)
+  address            String              @db.Text
+  phone              String              @db.VarChar(30)
+  distanceKm         Float               @default(0.0)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  city               City                @relation(fields: [cityId], references: [id])
+  hospital           Hospital?           @relation(fields: [hospitalId], references: [id])
+  inventory          BloodInventory[]
+  history            BloodInventoryHistory[]
+
+  @@index([cityId])
+  @@map("blood_banks")
+}
+
+model BloodInventory {
+  id                 String              @id @default(uuid())
+  bloodBankId        String
+  bloodGroup         BloodGroup
+  availableUnits     Int                 @default(0)
+  status             StockStatus         @default(AVAILABLE)
+  updatedByUserId    String?
+  updatedAt          DateTime            @updatedAt
+
+  bloodBank          BloodBank           @relation(fields: [bloodBankId], references: [id], onDelete: Cascade)
+
+  @@unique([bloodBankId, bloodGroup])
+  @@index([bloodBankId])
+  @@index([bloodGroup])
+  @@map("blood_inventories")
+}
+
+model BloodInventoryHistory {
+  id                 String              @id @default(uuid())
+  bloodBankId        String
+  bloodGroup         BloodGroup
+  units              Int
+  action             String              @db.VarChar(50) // "ADD", "DISPENSE", "VERIFY"
+  changedByUserId    String?
+  timestamp          DateTime            @default(now())
+
+  bloodBank          BloodBank           @relation(fields: [bloodBankId], references: [id], onDelete: Cascade)
+
+  @@index([bloodBankId, timestamp])
+  @@map("blood_inventory_histories")
+}
+
+// ==========================================
+// 8. MEDICINE MANAGEMENT
+// ==========================================
+
+model Medicine {
+  id                 String              @id // e.g. "paracetamol"
+  name               String              @db.VarChar(150)
+  genericName        String?             @db.VarChar(150)
+  strength           String              @db.VarChar(50)  // e.g. "500 mg"
+  dosageForm         String              @db.VarChar(50)  // e.g. "Tablet", "IV Bottle"
+  category           String?             @db.VarChar(100)
+  createdAt          DateTime            @default(now())
+
+  inventories        MedicineInventory[]
+
+  @@index([name])
+  @@map("medicines")
+}
+
+model MedicineInventory {
+  id                 String              @id @default(uuid())
+  medicineId         String
+  cityId             String
+  providerName       String              @db.VarChar(200) // e.g. "District General Hospital Pharmacy"
+  providerType       String              @db.VarChar(100) // "Hospital pharmacy" | "Jan Aushadhi Kendra"
+  locationArea       String              @db.VarChar(150)
+  distanceKm         Float               @default(0.0)
+  stockStatus        StockStatus         @default(AVAILABLE)
+  quantityDescription String             @db.VarChar(100) // e.g. "128 tablets"
+  updatedByUserId    String?
+  updatedAt          DateTime            @updatedAt
+
+  medicine           Medicine            @relation(fields: [medicineId], references: [id], onDelete: Cascade)
+  city               City                @relation(fields: [cityId], references: [id])
+  history            MedicineInventoryHistory[]
+
+  @@index([cityId])
+  @@index([medicineId])
+  @@index([stockStatus])
+  @@map("medicine_inventories")
+}
+
+model MedicineInventoryHistory {
+  id                 String              @id @default(uuid())
+  inventoryId        String
+  stockStatus        StockStatus
+  quantityDescription String             @db.VarChar(100)
+  changedByUserId    String?
+  timestamp          DateTime            @default(now())
+
+  inventory          MedicineInventory   @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+
+  @@index([inventoryId, timestamp])
+  @@map("medicine_inventory_histories")
+}
+
+// ==========================================
+// 9. AMBULANCE SERVICES
+// ==========================================
+
+model AmbulanceProvider {
+  id                 String              @id @default(uuid())
+  cityId             String
+  name               String              @db.VarChar(150) // e.g. "Karnataka 108 Emergency Network"
+  phone              String              @db.VarChar(30)
+  baseLocation       String              @db.VarChar(150)
+  createdAt          DateTime            @default(now())
+
+  city               City                @relation(fields: [cityId], references: [id])
+  ambulances         Ambulance[]
+
+  @@index([cityId])
+  @@map("ambulance_providers")
+}
+
+model Ambulance {
+  id                 String              @id // Plate number e.g. "KA-01-AB-1234"
+  providerId         String
+  cityId             String
+  type               AmbulanceType       @default(BASIC_LIFE_SUPPORT)
+  status             AmbulanceStatus     @default(AVAILABLE)
+  distanceKm         Float               @default(0.0)
+  etaMinutes         Int                 @default(10)
+  currentLat         Float?
+  currentLng         Float?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  provider           AmbulanceProvider   @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  city               City                @relation(fields: [cityId], references: [id])
+  requests           AmbulanceRequest[]
+
+  @@index([cityId])
+  @@index([status])
+  @@map("ambulances")
+}
+
+model AmbulanceRequest {
+  id                 String              @id @default(uuid())
+  patientId          String?
+  ambulanceId        String?
+  destinationHospitalId String?
+  pickupAddress      String              @db.Text
+  emergencyType      String              @db.VarChar(100) // e.g. "Medical emergency", "Trauma / Accident"
+  contactPhone       String              @db.VarChar(30)
+  patientName        String?             @db.VarChar(150)
+  notes              String?             @db.Text
+  status             EmergencyRequestStatus @default(REQUESTED)
+  requestedAt        DateTime            @default(now())
+  completedAt        DateTime?
+
+  patient            User?               @relation("PatientAmbulanceRequests", fields: [patientId], references: [id])
+  ambulance          Ambulance?          @relation(fields: [ambulanceId], references: [id])
+  destinationHospital Hospital?         @relation("DestinationHospital", fields: [destinationHospitalId], references: [id])
+
+  @@index([status])
+  @@index([requestedAt])
+  @@map("ambulance_requests")
+}
+
+// ==========================================
+// 10. MEDICAL RECORDS MANAGEMENT VAULT
+// ==========================================
+
+model PatientMedicalProfile {
+  id                 String              @id @default(uuid())
+  userId             String              @unique
+  bloodGroup         String?             @db.VarChar(10)
+  allergies          String?             @db.Text
+  chronicConditions  String?             @db.Text
+  emergencyContactName String?           @db.VarChar(150)
+  emergencyContactPhone String?          @db.VarChar(30)
+  emergencyContactRelation String?       @db.VarChar(50)
+  updatedAt          DateTime            @updatedAt
+
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("patient_medical_profiles")
+}
+
+model MedicalRecord {
+  id                 String              @id @default(uuid())
+  patientId          String
+  title              String              @db.VarChar(200)
+  recordType         RecordType
+  facilityName       String              @db.VarChar(200)
+  doctorName         String?             @db.VarChar(150)
+  recordDate         DateTime            @default(now())
+  summary            String?             @db.Text
+  detailsJson        String?             @db.Text // Encrypted or structured details
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  patient            User                @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  prescriptions      Prescription[]
+
+  @@index([patientId, recordDate])
+  @@map("medical_records")
+}
+
+model Prescription {
+  id                 String              @id @default(uuid())
+  recordId           String?
+  patientId          String
+  doctorId           String?
+  medicationName     String              @db.VarChar(150)
+  strength           String              @db.VarChar(50)
+  form               String              @db.VarChar(50)
+  dosage             String              @db.VarChar(100) // e.g. "1 tablet daily after breakfast"
+  instructions       String?             @db.Text
+  status             String              @default("Active") @db.VarChar(30)
+  prescribedDate     DateTime            @default(now())
+
+  record             MedicalRecord?      @relation(fields: [recordId], references: [id], onDelete: SetNull)
+  patient            User                @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor             Doctor?             @relation("DoctorPrescriptions", fields: [doctorId], references: [id])
+
+  @@index([patientId])
+  @@map("prescriptions")
+}
+
+model MedicalDocument {
+  id                 String              @id @default(uuid())
+  patientId          String
+  title              String              @db.VarChar(255)
+  category           String              @db.VarChar(100) // "Lab Report", "Discharge Summary"
+  storagePath        String              @db.VarChar(500)
+  fileSize           String              @db.VarChar(50)
+  mimeType           String              @db.VarChar(100)
+  accessLevel        String              @default("PROTECTED") @db.VarChar(50)
+  uploadedAt         DateTime            @default(now())
+
+  patient            User                @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+  @@map("medical_documents")
+}
+
+model MedicalRecordAccess {
+  id                 String              @id @default(uuid())
+  patientId          String
+  doctorId           String?
+  accessPassCode     String              @unique @db.VarChar(20) // e.g. "CS-829143"
+  expiresAt          DateTime
+  isActive           Boolean             @default(true)
+  isRevoked          Boolean             @default(false)
+  grantedAt          DateTime            @default(now())
+  revokedAt          DateTime?
+
+  patient            User                @relation("PatientAccessGrants", fields: [patientId], references: [id], onDelete: Cascade)
+  doctor             Doctor?             @relation("DoctorAccessGrants", fields: [doctorId], references: [id])
+
+  @@index([accessPassCode])
+  @@index([patientId])
+  @@map("medical_record_accesses")
+}
+
+model AuditLog {
+  id                 String              @id @default(uuid())
+  userId             String?
+  action             String              @db.VarChar(100) // e.g. "VIEW_MEDICAL_RECORD", "UPDATE_BEDS"
+  resourceType       String              @db.VarChar(100) // e.g. "BED", "MEDICAL_RECORD", "AUTH"
+  resourceId         String?             @db.VarChar(100)
+  ipAddress          String?             @db.VarChar(45)
+  userAgent          String?             @db.VarChar(255)
+  details            String?             @db.Text
+  timestamp          DateTime            @default(now())
+
+  user               User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([action])
+  @@index([timestamp])
+  @@map("audit_logs")
+}

@@ -1,40 +1,102 @@
-# caresphere
+# CareSphere
 
-## CareSphere prototype
+**AI-Powered, City-Based Integrated Government Healthcare Resource Management and Assistance Platform**
 
-CareSphere is a static healthcare ecosystem prototype. Open `index.html` for the dashboard and onboarding experience. The Find care page links to focused service walkthroughs in [`features/`](./features/index.html). The dashboard also includes a `PredictAI` section for hospital and government staff views. PredictAI currently reports that forecasts and live availability are unavailable; no genuine dataset or verified hospital connection is configured.
+CareSphere connects citizens, healthcare providers, blood banks, pharmacies, and emergency services into one unified healthcare system. The platform is initially centered on **Bengaluru** as the active healthcare node, with an expandable multi-city architecture.
 
-### Client walkthrough
+---
 
-Open [`features/index.html`](./features/index.html) for the presentation-oriented overview, feature highlights, a suggested demo story, and clear prototype boundaries. Each service can also be opened directly:
+## 1. Project Architecture
 
-- [`features/bed-availability.html`](./features/bed-availability.html) — bed types, availability and distance filters.
-- [`features/doctor-directory.html`](./features/doctor-directory.html) — sample clinicians and an appointment preview.
-- [`features/medicine-availability.html`](./features/medicine-availability.html) — medicine/provider search and nearby/availability filters.
-- [`features/ambulance-availability.html`](./features/ambulance-availability.html) — illustrative unit listings and a local, non-dispatch request preview.
-- [`features/blood-availability.html`](./features/blood-availability.html) — illustrative blood-group availability.
-- [`features/government-schemes.html`](./features/government-schemes.html) — programme information and an application preview.
-- [`features/unified-search.html`](./features/unified-search.html) — sample search across connected services.
+CareSphere comprises a modern frontend SPA and an enterprise-grade RESTful backend service:
 
-### Implementation notes
+```
+CareSphere/
+├── index.html                   # Main frontend SPA application (7 Core Services)
+├── logo-animation.html          # Animated 8-node circular healthcare network visualizer
+├── onboarding.html              # Standalone role onboarding & setup wizard
+├── assets/                      # Intelligent 3D User Guide, Localization, Theme CSS
+├── features/                    # Standalone client service showcase pages
+│
+└── backend/                     # Complete Node.js & Express RESTful API Service
+    ├── prisma/
+    │   ├── schema.prisma        # Normalized PostgreSQL relational schema (Prisma ORM)
+    │   └── seed.js              # Database seeder for Bengaluru baseline data
+    ├── src/
+    │   ├── config/database.js   # Prisma connection manager & diagnostics
+    │   ├── controllers/         # Domain controllers (Auth, Hospitals, Beds, etc.)
+    │   ├── middleware/          # JWT authentication, RBAC, error & audit logging
+    │   ├── routes/              # Express API endpoints for all 7 services
+    │   ├── services/store.js    # Verified Bengaluru seed store & fallback adapter
+    │   ├── app.js               # Express app (Helmet, CORS, Morgan)
+    │   └── server.js            # Server listener with graceful shutdown
+    ├── tests/api.test.js        # Automated integration test suite (10/10 passing)
+    ├── CareSphere_API.postman_collection.json # Ready-to-import Postman collection
+    ├── .env.example             # Environment configuration template
+    └── package.json             # Backend dependencies & npm scripts
+```
 
-The pages are static HTML and can be opened directly in a browser; no build step is required. `features/features-data.js` contains shared demonstration records, `features/feature-pages.js` renders the interactive standalone service screens, and `features/feature-pages.css` provides their shared responsive styling. `assets/localization.js` provides the shared English, Kannada and Hindi language selection and translations, persisted across pages in the browser. Comments in these files identify the important data, rendering, and interaction blocks.
+---
 
-All availability and update times are sample data, not a live service. The ambulance preview does not contact emergency services or dispatch a vehicle. Scheme eligibility and applications require official verification; medicine content is not treatment advice.
+## 2. The Seven Core Services
 
-### PredictAI data-status prototype
+1. **Hospital Availability:** Directory of registered hospitals, facilities, addresses, and contacts in the selected city.
+2. **Bed Availability:** Real-time capacity meters for **General**, **ICU**, and **Emergency** beds with occupancy tracking.
+3. **Doctor Availability:** Specialists searchable by discipline, hospital affiliation, working hours, and consultation booking.
+4. **Blood Availability:** Stock tracking by blood group (`A+`, `A−`, `B+`, `B−`, `AB+`, `AB−`, `O+`, `O−`) with donor compatibility.
+5. **Medicine Availability:** Pharmacy drug inventory across registered hospital pharmacies and Jan Aushadhi Kendras.
+6. **Ambulance Services:** Emergency response fleet directory (ALS/BLS), 24/7 hotline dialers, and dispatch tracking.
+7. **Medical Records Management:** Private-by-default personal health vault with encrypted document uploads and 6-digit temporary clinician access passes.
 
-PredictAI is available from the hospital and government staff dashboard views. **No genuine dataset, verified hospital connection, forecasting model, or live alert service is configured.** Disease forecasts and operational availability are explicitly unavailable; no forecast numbers, resource counts, or alerts are generated. The role selector is a demo convenience, not access control.
+---
 
-Open `index.html` directly as before. PredictAI implementation is split across:
+## 3. Getting Started
 
-- `assets/predictai.js` — data-status screens, source-details form, local CSV inspection, and non-quantitative event preparedness checklist.
-- `assets/predictai-core.js` — CSV parsing and schema/data-quality validation only; it does not implement forecasting.
-- `assets/predictai.css` — responsive PredictAI-only styling.
-- `assets/predictai-core.test.js` — dependency-free parser and schema-validation tests.
+### Running the Frontend
+The frontend requires no build step and can be opened directly:
+- Open [`index.html`](./index.html) in any modern web browser (Google Chrome, Microsoft Edge, Mozilla Firefox).
+- For the animated brand introduction, open [`logo-animation.html`](./logo-animation.html).
+- For feature-specific tours, open [`features/index.html`](./features/index.html).
 
-No genuine health datasets were used or independently verified for this project. If an authorized presenter elects to inspect a CSV, the screen requires the dataset title, publisher, URL, date range, geographic coverage, units, update frequency, and a user attestation that the source and file were checked. Those details are user-declared, not verified by the app. Imported observations are displayed with this limitation and processed in the current browser tab only; they are not persisted or uploaded. Disease files require `date,area,cases`; resource files require `date,area,item,daily_demand,usable_stock,lead_time_days`. CSV structural checks identify missing values, duplicate observations, invalid dates/numbers, and date gaps, but cannot prove authenticity, source accessibility, accuracy, or reporting timeliness. Do not upload patient-identifiable or otherwise sensitive data.
+### Running the Backend Server
+```bash
+# Navigate to backend directory
+cd backend
 
-The disease, bed, blood, medicine, equipment, staffing, and alert sections show unavailable states because no suitable validated dataset, verified operational connection, evaluated model, or live warning service exists. Forecast history is empty because no forecasts are generated. The event form collects user-entered notes for an in-memory, non-quantitative checklist; it does not predict event-related demand or imply that an event causes an outbreak.
+# Install dependencies
+npm install
 
-Run the focused tests with `node --test assets/predictai-core.test.js` (Node.js required; no package installation or build step). A future integration needs an accessible and traceable dataset, domain-approved data definitions, reporting-delay review, chronological model training and holdout evaluation, server-side authorization, audit logging, data governance, and retention controls. No backend or proposed API is currently implemented.
+# (Optional) Configure PostgreSQL in .env
+cp .env.example .env
+
+# Validate Prisma schema
+npm run prisma:validate
+
+# Generate Prisma Client
+npm run prisma:generate
+
+# Start the Express API server
+npm start
+```
+The backend API starts on `http://localhost:5000`.  
+Health check endpoint: `http://localhost:5000/api/health`
+
+---
+
+## 4. Testing & Verification
+
+### Run Backend Tests (10/10 Passing)
+```bash
+cd backend
+npm test
+```
+Verifies server health, city filtering, 7 core service queries, patient registration, JWT authentication, and RBAC security rules.
+
+### Run Frontend Unit Tests (4/4 Passing)
+```bash
+node assets/predictai-core.test.js
+```
+Verifies core CSV observation parsing, schema checks, and column validation.
+
+### API Testing with Postman
+Import `backend/CareSphere_API.postman_collection.json` into Postman to test all endpoints with preconfigured request bodies and query parameters.

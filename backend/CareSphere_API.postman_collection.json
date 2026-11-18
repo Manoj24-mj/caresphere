@@ -1,0 +1,372 @@
+{
+  "info": {
+    "name": "CareSphere Healthcare Platform API",
+    "_postman_id": "caresphere-api-collection-2026",
+    "description": "Postman API Collection for CareSphere - AI-Powered City-Based Government Healthcare Resource Management Platform",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "System & Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register Patient",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Rahul Sharma\",\n  \"mobile\": \"+91 98765 43210\",\n  \"email\": \"rahul@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"role\": \"PATIENT\",\n  \"address\": \"24, CMH Road, Indiranagar, Bengaluru\",\n  \"pinCode\": \"560038\",\n  \"cityId\": \"bengaluru\",\n  \"gender\": \"Male\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login User",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"+91 98450 12345\",\n  \"password\": \"CareSphere@2026\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get Profile (Me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "City Engine",
+      "item": [
+        {
+          "name": "List All Cities",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/cities",
+              "host": ["{{baseUrl}}"],
+              "path": ["cities"]
+            }
+          }
+        },
+        {
+          "name": "Get City by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/cities/bengaluru",
+              "host": ["{{baseUrl}}"],
+              "path": ["cities", "bengaluru"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Hospital Availability",
+      "item": [
+        {
+          "name": "List Hospitals in City",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/hospitals?city=bengaluru",
+              "host": ["{{baseUrl}}"],
+              "path": ["hospitals"],
+              "query": [{ "key": "city", "value": "bengaluru" }]
+            }
+          }
+        },
+        {
+          "name": "Get Hospital Details",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/hospitals/district-general",
+              "host": ["{{baseUrl}}"],
+              "path": ["hospitals", "district-general"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Bed Availability",
+      "item": [
+        {
+          "name": "Get Live Bed Availability",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/beds?city=bengaluru&type=ICU",
+              "host": ["{{baseUrl}}"],
+              "path": ["beds"],
+              "query": [
+                { "key": "city", "value": "bengaluru" },
+                { "key": "type", "value": "ICU" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff: Update Bed Capacity",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hospitalId\": \"district-general\",\n  \"beds\": {\n    \"General\": [20, 50],\n    \"ICU\": [4, 12],\n    \"Emergency\": [3, 6]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/beds/update",
+              "host": ["{{baseUrl}}"],
+              "path": ["beds", "update"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Doctor Availability",
+      "item": [
+        {
+          "name": "List Doctors",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/doctors?city=bengaluru&specialty=Cardiology",
+              "host": ["{{baseUrl}}"],
+              "path": ["doctors"],
+              "query": [
+                { "key": "city", "value": "bengaluru" },
+                { "key": "specialty", "value": "Cardiology" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Request Appointment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctorId\": \"dr-priya\",\n  \"hospitalId\": \"district-general\",\n  \"appointmentDate\": \"2026-11-25\",\n  \"timeSlot\": \"10:30 AM\",\n  \"reason\": \"Cardiovascular follow-up consultation\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/appointments",
+              "host": ["{{baseUrl}}"],
+              "path": ["appointments"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Blood Availability",
+      "item": [
+        {
+          "name": "Get Blood Stock by Group",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/blood-inventory?city=bengaluru&group=O+",
+              "host": ["{{baseUrl}}"],
+              "path": ["blood-inventory"],
+              "query": [
+                { "key": "city", "value": "bengaluru" },
+                { "key": "group", "value": "O+" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff: Update Blood Stock",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"bld-1\",\n  \"units\": 16,\n  \"status\": \"Available\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/blood-inventory/update",
+              "host": ["{{baseUrl}}"],
+              "path": ["blood-inventory", "update"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Medicine Availability",
+      "item": [
+        {
+          "name": "Search Essential Medicines",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/medicines?city=bengaluru&query=Paracetamol",
+              "host": ["{{baseUrl}}"],
+              "path": ["medicines"],
+              "query": [
+                { "key": "city", "value": "bengaluru" },
+                { "key": "query", "value": "Paracetamol" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Ambulance Services",
+      "item": [
+        {
+          "name": "List Active Ambulance Fleet",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/ambulances?city=bengaluru",
+              "host": ["{{baseUrl}}"],
+              "path": ["ambulances"],
+              "query": [{ "key": "city", "value": "bengaluru" }]
+            }
+          }
+        },
+        {
+          "name": "Emergency Assistance Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pickup\": \"MG Road Metro Station, Bengaluru\",\n  \"emergencyType\": \"Cardiac arrest emergency\",\n  \"contact\": \"+91 98450 99999\",\n  \"destination\": \"District General Hospital\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ambulance-requests",
+              "host": ["{{baseUrl}}"],
+              "path": ["ambulance-requests"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Medical Records Management Vault",
+      "item": [
+        {
+          "name": "Get My Medical Records (Private)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/medical-records/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["medical-records", "me"]
+            }
+          }
+        },
+        {
+          "name": "Generate Clinician Access Pass (6-Digit)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/medical-records/access-pass/generate",
+              "host": ["{{baseUrl}}"],
+              "path": ["medical-records", "access-pass", "generate"]
+            }
+          }
+        },
+        {
+          "name": "Doctor: Verify Pass & Unlock Records",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"passCode\": \"CS-829143\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/medical-records/access-pass/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["medical-records", "access-pass", "verify"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
