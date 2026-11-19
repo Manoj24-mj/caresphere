@@ -353,5 +353,33 @@
     }
   });
 
+  // Attempt live read-side sync from CareSphere REST API
+  if (window.CareSphereAPI && ["hospitals", "beds"].includes(feature)) {
+    window.CareSphereAPI.checkHealth(1500).then(health => {
+      if (health.online) {
+        window.CareSphereAPI.getHospitals("bengaluru").then(res => {
+          if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+            demo.hospitals = res.data.map(h => ({
+              id: h.id,
+              city: h.cityId || "bengaluru",
+              name: h.name,
+              type: h.hospitalType || h.type || "General hospital",
+              location: h.locationArea || h.location || "Central District, Bengaluru",
+              address: h.address || "Bengaluru",
+              distance: typeof h.distanceKm === "number" ? h.distanceKm : (h.distance || 0),
+              updated: h.updated || "Live API verified",
+              status: h.status || "Available",
+              phone: h.phone || "+91 80 2200 0000",
+              facilities: h.facilities || [],
+              beds: h.beds || {},
+              _source: "api"
+            }));
+            render();
+          }
+        }).catch(() => {});
+      }
+    }).catch(() => {});
+  }
+
   render();
 })();

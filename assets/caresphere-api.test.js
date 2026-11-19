@@ -88,4 +88,104 @@ describe("CareSphere Frontend API Client", () => {
     assert.equal(res.offline, true);
     assert.ok(res.error.includes("ECONNREFUSED"));
   });
+
+  test("GET /api/hospitals successfully retrieves and parses hospital records", async () => {
+    global.fetch = async (url) => {
+      assert.ok(url.includes("/api/hospitals?city=bengaluru&query=Victoria"));
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          message: "Found 1 hospital in bengaluru.",
+          data: [
+            {
+              id: "district-general",
+              cityId: "bengaluru",
+              name: "District General Hospital",
+              hospitalType: "Government hospital",
+              address: "Victoria Hospital Campus, Fort Road, Bengaluru - 560002",
+              locationArea: "Central District, Bengaluru",
+              distanceKm: 2.4,
+              status: "Available",
+              facilities: ["24x7 Emergency", "ICU"],
+              beds: { General: [18, 50], ICU: [3, 12] }
+            }
+          ]
+        })
+      };
+    };
+
+    const res = await api.getHospitals("bengaluru", { query: "Victoria" });
+    assert.equal(res.success, true);
+    assert.equal(res.data.length, 1);
+    assert.equal(res.data[0].id, "district-general");
+    assert.equal(res.data[0].name, "District General Hospital");
+  });
+
+  test("GET /api/beds successfully retrieves categorized bed inventory", async () => {
+    global.fetch = async (url) => {
+      assert.ok(url.includes("/api/beds?city=bengaluru&type=ICU"));
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          message: "Retrieved bed records",
+          data: [
+            {
+              hospitalId: "district-general",
+              hospitalName: "District General Hospital",
+              category: "ICU",
+              available: 3,
+              total: 12,
+              status: "Available"
+            }
+          ]
+        })
+      };
+    };
+
+    const res = await api.getBeds("bengaluru", { type: "ICU" });
+    assert.equal(res.success, true);
+    assert.equal(res.data.length, 1);
+    assert.equal(res.data[0].category, "ICU");
+    assert.equal(res.data[0].available, 3);
+  });
+
+  test("Handles empty API responses for upcoming or unonboarded cities", async () => {
+    global.fetch = async (url) => {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          message: "Found 0 hospitals in mysuru.",
+          data: []
+        })
+      };
+    };
+
+    const res = await api.getHospitals("mysuru");
+    assert.equal(res.success, true);
+    assert.deepEqual(res.data, []);
+  });
+
+  test("Handles non-200 server errors cleanly with error description", async () => {
+    global.fetch = async () => {
+      return {
+        ok: false,
+        status: 500,
+        json: async () => ({
+          success: false,
+          error: "Internal database query failure"
+        })
+      };
+    };
+
+    const res = await api.getHospitals("bengaluru");
+    assert.equal(res.success, false);
+    assert.equal(res.status, 500);
+    assert.equal(res.error, "Internal database query failure");
+  });
 });

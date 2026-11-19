@@ -19,6 +19,7 @@
   <script src="assets/localization.js" defer></script>
   <title>CareSphere — Right Care, Right Place, Right Time</title>
   <style>
+    @keyframes spin { to { transform: rotate(360deg); } }
     :root {
       color-scheme: light;
       --ink: #101B35;
@@ -1398,6 +1399,9 @@
         updateCityBadge();
         render();
         showToast(`Switched active city to ${city.name}, ${city.state}.`);
+        if (typeof fetchHospitalsFromAPI === "function") {
+          fetchHospitalsFromAPI(city.id, true);
+        }
       }
     }
     function updateCityBadge() {
@@ -1444,7 +1448,7 @@
 
     const bedTypes = ["General", "ICU", "Emergency", "Pediatric", "Maternity", "Isolation"];
 
-    const serviceHospitals = [
+    const baselineHospitals = [
       {
         id: "district-general",
         city: "bengaluru",
@@ -1458,7 +1462,8 @@
         phone: "+91 80 5550 0100",
         facilities: ["24x7 Emergency", "ICU", "Blood Bank", "Pharmacy", "Ambulance Bay", "Diagnostics"],
         beds: { General: [18, 50], ICU: [3, 12], Emergency: [2, 6], Pediatric: [4, 10], Maternity: [5, 12], Isolation: [1, 4] },
-        resources: ["Doctors on duty", "O+ blood", "Diagnostics", "Pharmacy", "Ambulance bay"]
+        resources: ["Doctors on duty", "O+ blood", "Diagnostics", "Pharmacy", "Ambulance bay"],
+        _source: "baseline"
       },
       {
         id: "city-medical",
@@ -1473,7 +1478,8 @@
         phone: "+91 80 5550 0200",
         facilities: ["Specialist OPD", "ICU", "Blood Depot", "24x7 Pharmacy", "Diagnostics"],
         beds: { General: [9, 40], ICU: [2, 10], Emergency: [1, 5], Pediatric: [3, 8], Maternity: [2, 10], Isolation: [0, 3] },
-        resources: ["Specialist available", "A+ blood", "Diagnostics", "Pharmacy"]
+        resources: ["Specialist available", "A+ blood", "Diagnostics", "Pharmacy"],
+        _source: "baseline"
       },
       {
         id: "community-care",
@@ -1488,9 +1494,103 @@
         phone: "+91 80 5550 0300",
         facilities: ["General OPD", "Emergency First Aid", "Jan Aushadhi Kendra", "Diagnostics"],
         beds: { General: [22, 35], ICU: [0, 0], Emergency: [2, 4], Pediatric: [2, 6], Maternity: [3, 6], Isolation: [1, 2] },
-        resources: ["General medicine", "Emergency First Aid", "Jan Aushadhi Pharmacy"]
+        resources: ["General medicine", "Emergency First Aid", "Jan Aushadhi Pharmacy"],
+        _source: "baseline"
       }
     ];
+
+    let serviceHospitals = baselineHospitals.map(h => ({ ...h }));
+
+    const apiResourceState = {
+      hospitals: {
+        loading: false,
+        error: null,
+        source: "baseline",
+        lastFetchedCity: null,
+        lastFetchTime: null
+      },
+      beds: {
+        loading: false,
+        error: null,
+        source: "baseline",
+        lastFetchedCity: null,
+        lastFetchTime: null
+      }
+    };
+
+    function normalizeHospitalFromApi(item) {
+      return {
+        id: item.id,
+        city: item.cityId || item.city || "bengaluru",
+        name: item.name,
+        type: item.hospitalType || item.type || "Government hospital",
+        location: item.locationArea || item.location || "Central District, Bengaluru",
+        address: item.address || "Bengaluru",
+        distance: typeof item.distanceKm === "number" ? item.distanceKm : (item.distance || 0),
+        updated: item.updated || "Live API registry",
+        status: item.status || "Available",
+        phone: item.phone || "+91 80 2200 0000",
+        facilities: Array.isArray(item.facilities) ? item.facilities : ["24x7 Emergency", "Diagnostics"],
+        beds: item.beds || { General: [0, 0], ICU: [0, 0], Emergency: [0, 0] },
+        resources: Array.isArray(item.resources) ? item.resources : ["Emergency", "ICU", "Diagnostics"],
+        _source: "api"
+      };
+    }
+
+    async function fetchHospitalsFromAPI(cityId, force = false) {
+      if (!window.CareSphereAPI) return;
+      const targetCity = cityId || getActiveCity().id;
+
+      if (!force && apiResourceState.hospitals.lastFetchedCity === targetCity && !apiResourceState.hospitals.error && apiResourceState.hospitals.source === "api") {
+        return;
+      }
+
+      apiResourceState.hospitals.loading = true;
+      apiResourceState.hospitals.error = null;
+      render();
+
+      try {
+        const res = await window.CareSphereAPI.getHospitals(targetCity);
+        apiResourceState.hospitals.loading = false;
+        apiResourceState.hospitals.lastFetchedCity = targetCity;
+
+        if (res.success && Array.isArray(res.data)) {
+          if (res.data.length > 0) {
+            const liveList = res.data.map(normalizeHospitalFromApi);
+            const otherCities = serviceHospitals.filter(h => h.city !== targetCity && h._source === "api");
+            serviceHospitals = [...otherCities, ...liveList];
+            apiResourceState.hospitals.source = "api";
+            apiResourceState.beds.source = "api";
+            apiResourceState.hospitals.lastFetchTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            apiResourceState.hospitals.error = null;
+          } else {
+            const otherCities = serviceHospitals.filter(h => h.city !== targetCity);
+            serviceHospitals = [...otherCities];
+            apiResourceState.hospitals.source = "api";
+            apiResourceState.beds.source = "api";
+            apiResourceState.hospitals.lastFetchTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            apiResourceState.hospitals.error = null;
+          }
+        } else if (res.offline) {
+          apiResourceState.hospitals.source = "baseline";
+          apiResourceState.beds.source = "baseline";
+          apiResourceState.hospitals.error = null;
+          const hasCityInState = serviceHospitals.some(h => h.city === targetCity);
+          if (!hasCityInState) {
+            serviceHospitals = baselineHospitals.map(h => ({ ...h }));
+          }
+        } else {
+          apiResourceState.hospitals.error = res.error || "Failed to retrieve hospital registry from server.";
+          apiResourceState.hospitals.source = "baseline";
+        }
+      } catch (err) {
+        apiResourceState.hospitals.loading = false;
+        apiResourceState.hospitals.error = err.message || "Failed to communicate with healthcare registry API.";
+        apiResourceState.hospitals.source = "baseline";
+      }
+
+      render();
+    }
 
     const serviceMedicines = [
       { id: "paracetamol", city: "bengaluru", name: "Paracetamol", strength: "500 mg", availability: "Available", quantity: "128 tablets", provider: "District General Hospital Pharmacy", providerType: "Hospital pharmacy", location: "Central District, Bengaluru", distance: 2.4, updated: "10 minutes ago" },
@@ -2545,8 +2645,28 @@
       return `<button class="text-link" type="button" data-service-route="hub">←&nbsp; ${label}</button>`;
     }
 
-    function serviceFreshness() {
-      return `<p class="service-freshness"><strong>City-Level Resource Sync</strong> · Resource availability is updated periodically by registered facilities. Always verify in urgent situations.</p>`;
+    function serviceFreshness(moduleName = "hospitals") {
+      const state = apiResourceState[moduleName] || apiResourceState.hospitals;
+
+      if (state.source === "api") {
+        return `
+          <div class="service-freshness live-freshness" style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:10px;font-size:12px;color:#065F46;margin:10px 0 16px;">
+            <div style="display:flex;align-items:center;gap:7px;">
+              <span style="width:8px;height:8px;border-radius:50%;background:#10B981;box-shadow:0 0 6px rgba(16, 185, 129, 0.6);display:inline-block;"></span>
+              <span><strong>Live CareSphere Registry:</strong> Synchronized with Municipal PostgreSQL Node (${state.lastFetchTime || "Just now"}).</span>
+            </div>
+            <button class="button ghost small" type="button" data-action="refresh-hospitals" title="Re-fetch live registry data" style="padding:2px 8px;font-size:11px;min-height:24px;border:1px solid #6EE7B7;background:#fff;">↻ Refresh</button>
+          </div>`;
+      }
+
+      return `
+        <div class="service-freshness fallback-freshness" style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;font-size:12px;color:#92400E;margin:10px 0 16px;">
+          <div style="display:flex;align-items:center;gap:7px;">
+            <span style="width:8px;height:8px;border-radius:50%;background:#F59E0B;display:inline-block;"></span>
+            <span><strong>Local Demonstration Baseline:</strong> Backend API offline. Demonstrating sample baseline figures (Not live verified).</span>
+          </div>
+          <button class="button secondary small" type="button" data-action="retry-hospitals" style="padding:2px 8px;font-size:11px;min-height:24px;">Connect API</button>
+        </div>`;
     }
 
     function serviceStatus(status) {
@@ -2603,6 +2723,27 @@
             <div style="margin-top:12px;"><button class="button small" type="button" data-action="set-city-bengaluru">Switch to Bengaluru (Active Node)</button></div>
           </div>`;
       }
+
+      if (apiResourceState.hospitals.loading) {
+        return `${sectionHeading("Hospital Availability", `Healthcare facilities in ${city.name}, ${city.state}`)}${serviceBackLink()}${serviceFreshness()}
+          <div class="service-notice" style="display:flex;align-items:center;gap:14px;padding:28px 20px;">
+            <div style="width:22px;height:22px;border:3px solid #CBD5E1;border-top-color:#3478F6;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+            <div>
+              <h3 style="margin:0 0 4px;font-size:15px;color:#1E293B;">Retrieving verified healthcare facilities...</h3>
+              <p style="margin:0;color:#64748B;font-size:12.5px;">Contacting CareSphere Municipal Registry node for ${city.name}.</p>
+            </div>
+          </div>`;
+      }
+
+      const errorNotice = apiResourceState.hospitals.error ? `
+        <div class="service-notice error-notice" style="border-left:4px solid #EF4444;background:#FEF2F2;color:#991B1B;padding:12px 16px;margin-bottom:14px;border-radius:10px;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <strong>Registry API Error:</strong> ${escapeHtml(apiResourceState.hospitals.error)}
+            <div style="font-size:11.5px;color:#B91C1C;margin-top:2px;">Displaying local baseline data. Figures are illustrative and not live verified.</div>
+          </div>
+          <button class="button small" type="button" data-action="retry-hospitals" style="margin-left:12px;">Retry</button>
+        </div>` : "";
+
       let hospitals = serviceHospitals.filter(h => h.city === city.id);
       const query = (serviceState.hospitalQuery || serviceState.query || "").trim().toLowerCase();
       if (query) {
@@ -2642,7 +2783,7 @@
           </div>
           <div style="display:flex;justify-content:space-between;padding:10px 14px;border-radius:10px;background:#F8FAFD;border:1px solid #E2E8F0;font-size:12.5px;margin-bottom:14px;">
             <span><strong>Total Beds:</strong> ${availBeds} available of ${totalBeds}</span>
-            <span><strong>Verified:</strong> ${h.updated}</span>
+            <span><strong>Data Source:</strong> ${h._source === "api" ? "<strong style='color:#059669;'>Live Registry API</strong>" : "<strong style='color:#D97706;'>Local Baseline (Sample)</strong>"}</span>
           </div>
           <div class="service-actions">
             <button class="button small" type="button" data-service-route="hospital" data-hospital="${h.id}">View Hospital Details</button>
@@ -2653,14 +2794,22 @@
         </article>`;
       }).join("");
 
-      return `${sectionHeading("Hospital Availability", `Verified healthcare facilities in ${city.name}, ${city.state}`)}${serviceBackLink()}${serviceFreshness()}
+      const emptyNotice = `
+        <div class="service-notice" style="text-align:center;padding:32px 16px;">
+          <div style="font-size:28px;margin-bottom:8px;">🏥</div>
+          <h3 style="margin:0 0 6px;font-size:16px;">No hospitals match your search</h3>
+          <p style="color:#64748B;font-size:13px;max-width:420px;margin:0 auto 16px;">No healthcare facilities in ${city.name} matched your filter criteria. Try adjusting or clearing your search.</p>
+          <button class="button secondary small" type="button" data-action="clear-hospital-filters">Clear Search & Filters</button>
+        </div>`;
+
+      return `${sectionHeading("Hospital Availability", `Verified healthcare facilities in ${city.name}, ${city.state}`)}${serviceBackLink()}${serviceFreshness()}${errorNotice}
         <div class="service-tools">
           <input type="search" value="${escapeHtml(serviceState.hospitalQuery || "")}" placeholder="Search hospital name, address, or facility..." aria-label="Search hospitals" data-service-filter="hospitalQuery">
           <select aria-label="Facility filter" data-service-filter="hospitalFacility">
             ${facilityOptions.map(f => `<option value="${f}" ${serviceState.hospitalFacility === f ? "selected" : ""}>${f === "All" ? "All Facilities" : f}</option>`).join("")}
           </select>
         </div>
-        <div class="resource-list">${cards || '<div class="service-notice">No hospitals match your search in this city.</div>'}</div>`;
+        <div class="resource-list">${cards || emptyNotice}</div>`;
     }
 
     function renderHospitalDetails() {
@@ -2709,6 +2858,27 @@
             <div style="margin-top:12px;"><button class="button small" type="button" data-action="set-city-bengaluru">Switch to Bengaluru (Active Node)</button></div>
           </div>`;
       }
+
+      if (apiResourceState.hospitals.loading) {
+        return `${sectionHeading("Bed Availability", `General, ICU & Emergency bed counts across ${city.name}, ${city.state}`)}${serviceBackLink()}${serviceFreshness("beds")}
+          <div class="service-notice" style="display:flex;align-items:center;gap:14px;padding:28px 20px;">
+            <div style="width:22px;height:22px;border:3px solid #CBD5E1;border-top-color:#3478F6;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+            <div>
+              <h3 style="margin:0 0 4px;font-size:15px;color:#1E293B;">Retrieving live bed capacity...</h3>
+              <p style="margin:0;color:#64748B;font-size:12.5px;">Contacting CareSphere Municipal Registry node for ${city.name}.</p>
+            </div>
+          </div>`;
+      }
+
+      const errorNotice = apiResourceState.hospitals.error ? `
+        <div class="service-notice error-notice" style="border-left:4px solid #EF4444;background:#FEF2F2;color:#991B1B;padding:12px 16px;margin-bottom:14px;border-radius:10px;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <strong>Bed Registry Sync Error:</strong> ${escapeHtml(apiResourceState.hospitals.error)}
+            <div style="font-size:11.5px;color:#B91C1C;margin-top:2px;">Displaying local baseline bed numbers. Figures are illustrative and not live verified.</div>
+          </div>
+          <button class="button small" type="button" data-action="retry-hospitals" style="margin-left:12px;">Retry</button>
+        </div>` : "";
+
       let hospitals = serviceHospitals.filter(h => h.city === city.id);
       const query = (serviceState.query || "").trim().toLowerCase();
       if (query) hospitals = hospitals.filter(h => `${h.name} ${h.location} ${h.type}`.toLowerCase().includes(query));
@@ -2756,7 +2926,7 @@
             }).join("")}
           </div>
           <div class="resource-foot" style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;">
-            <span class="service-freshness">Last updated ${hospital.updated}</span>
+            <span class="service-freshness">Source: ${hospital._source === "api" ? "<strong style='color:#059669;'>Live Registry API</strong>" : "<strong style='color:#D97706;'>Local Baseline (Sample)</strong>"} · Updated ${hospital.updated}</span>
             <button class="staff-sim-badge" type="button" data-action="sim-beds" data-hospital="${hospital.id}">Staff: Update Beds</button>
           </div>
           <div class="service-actions">
@@ -2767,7 +2937,15 @@
         </article>`;
       }).join("");
 
-      return `${sectionHeading("Bed Availability", `General, ICU & Emergency bed counts across ${city.name}, ${city.state}`)}${serviceBackLink()}${serviceFreshness()}
+      const emptyNotice = `
+        <div class="service-notice" style="text-align:center;padding:32px 16px;">
+          <div style="font-size:28px;margin-bottom:8px;">▦</div>
+          <h3 style="margin:0 0 6px;font-size:16px;">No bed availability matching filters</h3>
+          <p style="color:#64748B;font-size:13px;max-width:420px;margin:0 auto 16px;">No ${escapeHtml(serviceState.bedType)} beds matching your criteria are currently recorded in ${city.name}.</p>
+          <button class="button secondary small" type="button" data-action="clear-bed-filters">Reset Bed Filters</button>
+        </div>`;
+
+      return `${sectionHeading("Bed Availability", `General, ICU & Emergency bed counts across ${city.name}, ${city.state}`)}${serviceBackLink()}${serviceFreshness("beds")}${errorNotice}
         <div class="service-tools">
           <input type="search" value="${escapeHtml(serviceState.query)}" placeholder="Search hospital or area..." aria-label="Search hospitals" data-service-filter="bedQuery">
           <select aria-label="Bed category" data-service-filter="bedType">
@@ -2784,7 +2962,7 @@
             <option value="available" ${serviceState.bedSort === "available" ? "selected" : ""}>Most available</option>
           </select>
         </div>
-        <div class="resource-list">${cards || '<div class="service-notice">No hospitals match these bed filters in this city.</div>'}</div>`;
+        <div class="resource-list">${cards || emptyNotice}</div>`;
     }
 
     /* 4. CORE SERVICE 3 — DOCTOR AVAILABILITY */
@@ -3600,6 +3778,9 @@
         const servicePages = ["hub", "hospitals", "hospital", "beds", "doctors", "blood", "medicines", "pharmacy", "ambulances", "ambulance-request", "ambulance-tracking", "records", "search"];
         serviceState.page = servicePages.includes(route) ? route : null;
         activeNav = serviceState.page === "records" ? "Medical Records" : serviceState.page === "hospitals" ? "Hospitals" : serviceState.page === "beds" ? "Beds" : serviceState.page === "doctors" ? "Doctors" : serviceState.page === "blood" ? "Blood Bank" : serviceState.page === "medicines" ? "Medicines" : serviceState.page === "ambulances" ? "Ambulance" : "Home";
+        if (serviceState.page === "hospitals" || serviceState.page === "beds" || serviceState.page === "hospital") {
+          fetchHospitalsFromAPI(getActiveCity().id);
+        }
         render();
         window.scrollTo({ top: 0, behavior: "smooth" });
       } else if (target.dataset.nav) {
@@ -3608,9 +3789,33 @@
         activeNav = target.dataset.nav;
         const navMap = { "Hospitals": "hospitals", "Beds": "beds", "Doctors": "doctors", "Blood Bank": "blood", "Medicines": "medicines", "Ambulance": "ambulances", "Medical Records": "records" };
         serviceState.page = navMap[activeNav] || null;
+        if (serviceState.page === "hospitals" || serviceState.page === "beds") {
+          fetchHospitalsFromAPI(getActiveCity().id);
+        }
         render();
       } else if (target.dataset.action === "change-city") openCityModal();
       else if (target.dataset.action === "set-city-bengaluru") setActiveCity("bengaluru");
+      else if (target.dataset.action === "refresh-hospitals") {
+        showToast("Fetching live hospital registry from municipal node...");
+        fetchHospitalsFromAPI(getActiveCity().id, true);
+      }
+      else if (target.dataset.action === "retry-hospitals") {
+        showToast("Connecting to municipal health registry...");
+        fetchHospitalsFromAPI(getActiveCity().id, true);
+      }
+      else if (target.dataset.action === "clear-hospital-filters") {
+        serviceState.hospitalQuery = "";
+        serviceState.query = "";
+        serviceState.hospitalFacility = "All";
+        render();
+      }
+      else if (target.dataset.action === "clear-bed-filters") {
+        serviceState.bedType = "All";
+        serviceState.bedAvailability = "All";
+        serviceState.bedDistance = "Any distance";
+        serviceState.query = "";
+        render();
+      }
       else if (target.dataset.action === "book") openModal("book");
       else if (target.dataset.action === "book-doctor") openModal("book", { doctorName: target.dataset.doctorName });
       else if (target.dataset.action === "sos") openModal("sos");
@@ -3815,14 +4020,18 @@
     if (window.CareSphereAPI) {
       window.CareSphereAPI.onStatusChange((online, details) => {
         updateApiStatusUI(online, details);
+        if (online && apiResourceState.hospitals.source !== "api") {
+          fetchHospitalsFromAPI(getActiveCity().id);
+        }
       });
       document.getElementById("apiStatusBadge")?.addEventListener("click", () => {
         showToast("Checking CareSphere backend connection...");
         window.CareSphereAPI.checkHealth(2000).then(res => {
           if (res.online) {
             showToast(`CareSphere API connected (${res.latency}ms)`);
+            fetchHospitalsFromAPI(getActiveCity().id, true);
           } else {
-            showToast("CareSphere backend offline. Continuing in local baseline mode.");
+            showToast("CareSphere backend offline. Operating in local baseline mode.");
           }
         });
       });
