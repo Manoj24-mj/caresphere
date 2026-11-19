@@ -171,12 +171,12 @@
     const doctors = demo.doctors.filter(doctor => !q || `${doctor.name} ${doctor.specialty} ${doctor.facility}`.toLowerCase().includes(q));
     const doc3d = (window.CareSphere3D && window.CareSphere3D.svg) ? window.CareSphere3D.svg("equipment", { width: 36, height: 36 }) : "";
     const cards = doctors.map(doctor => `<article class="resource-card"><div class="card-heading"><div style="display:flex;align-items:center;gap:12px">${doc3d}<div><h2>${escapeHtml(doctor.name)}</h2><p>${escapeHtml(doctor.specialty)}</p></div></div>${statusPill(doctor.status)}</div>
-      <div class="resource-meta"><span>🏥 ${escapeHtml(doctor.facility)}</span><span>🛣️ ${doctor.distance} km</span></div>
+      <div class="resource-meta"><span>🏥 ${escapeHtml(doctor.facility)}</span><span>🛣️ ${doctor.distance} km</span><span>📡 ${doctor._source === "api" ? "<strong style='color:#059669;'>Live Registry API</strong>" : "Sample baseline"}</span></div>
       <div class="card-actions"><button class="button secondary" type="button" data-doctor-preview="${escapeHtml(doctor.name)}">Preview appointment</button></div>
       ${state.doctorMessage === doctor.name ? '<p class="inline-status" role="status">Appointment preview only — no appointment was booked or sent to the care team.</p>' : ""}</article>`).join("");
     const content = `<div class="toolbar"><input type="search" aria-label="Search doctors" placeholder="Search name, specialty or hospital" data-filter="query" value="${escapeHtml(state.query)}"></div>
-      <p class="result-count">${doctors.length} sample care team${doctors.length===1?"":"s"} found</p><section class="card-grid">${cards || '<p class="empty-state">No sample doctors match that search.</p>'}</section>
-      <p class="prototype-note notice-warning">Clinician names and appointment availability are illustrative. This prototype does not book a real appointment.</p>`;
+      <p class="result-count">${doctors.length} clinician${doctors.length===1?"":"s"} found</p><section class="card-grid">${cards || '<p class="empty-state">No clinicians match that search.</p>'}</section>
+      <p class="prototype-note notice-warning">Clinician names and appointment availability are illustrative unless synchronized with a live municipal registry node.</p>`;
     return shell("Find a doctor",titles.doctors[1],content);
   }
 
@@ -372,6 +372,29 @@
               phone: h.phone || "+91 80 2200 0000",
               facilities: h.facilities || [],
               beds: h.beds || {},
+              _source: "api"
+            }));
+            render();
+          }
+        }).catch(() => {});
+      }
+    }).catch(() => {});
+  } else if (window.CareSphereAPI && feature === "doctors") {
+    window.CareSphereAPI.checkHealth(1500).then(health => {
+      if (health.online) {
+        window.CareSphereAPI.getDoctors("bengaluru").then(res => {
+          if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+            demo.doctors = res.data.map(d => ({
+              id: d.id,
+              city: d.cityId || "bengaluru",
+              name: d.name,
+              specialty: d.specialty,
+              qualification: d.qualification || "MBBS, Specialist",
+              facility: d.facility || "District General Hospital",
+              department: d.department || `${d.specialty} Department`,
+              hours: d.workingHours || d.hours || "09:00 AM – 01:30 PM",
+              distance: typeof d.distanceKm === "number" ? d.distanceKm : (d.distance || 0),
+              status: d.status || "Appointments available",
               _source: "api"
             }));
             render();

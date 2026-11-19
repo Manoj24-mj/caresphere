@@ -188,4 +188,119 @@ describe("CareSphere Frontend API Client", () => {
     assert.equal(res.status, 500);
     assert.equal(res.error, "Internal database query failure");
   });
+
+  test("GET /api/doctors successfully retrieves and parses doctor records", async () => {
+    global.fetch = async (url) => {
+      assert.ok(url.includes("/api/doctors?city=bengaluru"));
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          message: "Found 3 doctors in bengaluru.",
+          data: [
+            {
+              id: "dr-priya",
+              cityId: "bengaluru",
+              hospitalId: "district-general",
+              name: "Dr. Priya Sharma",
+              specialty: "Cardiology",
+              qualification: "MBBS, MD (Med), DM (Cardiology)",
+              department: "Cardiology & Cardiac Care",
+              workingHours: "09:00 AM – 01:30 PM",
+              distanceKm: 2.4,
+              status: "Appointments available"
+            }
+          ]
+        })
+      };
+    };
+
+    const res = await api.getDoctors("bengaluru");
+    assert.equal(res.success, true);
+    assert.equal(res.data.length, 1);
+    assert.equal(res.data[0].id, "dr-priya");
+    assert.equal(res.data[0].name, "Dr. Priya Sharma");
+    assert.equal(res.data[0].specialty, "Cardiology");
+  });
+
+  test("GET /api/doctors supports specialty filtering and query search parameters", async () => {
+    global.fetch = async (url) => {
+      assert.ok(url.includes("/api/doctors?city=bengaluru&specialty=Cardiology&query=Priya"));
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          message: "Found 1 doctors in bengaluru.",
+          data: [
+            {
+              id: "dr-priya",
+              cityId: "bengaluru",
+              hospitalId: "district-general",
+              name: "Dr. Priya Sharma",
+              specialty: "Cardiology",
+              qualification: "MBBS, MD (Med), DM (Cardiology)",
+              department: "Cardiology & Cardiac Care",
+              workingHours: "09:00 AM – 01:30 PM",
+              distanceKm: 2.4,
+              status: "Appointments available"
+            }
+          ]
+        })
+      };
+    };
+
+    const res = await api.getDoctors("bengaluru", { specialty: "Cardiology", query: "Priya" });
+    assert.equal(res.success, true);
+    assert.equal(res.data.length, 1);
+    assert.equal(res.data[0].specialty, "Cardiology");
+  });
+
+  test("GET /api/doctors handles empty results for unonboarded cities", async () => {
+    global.fetch = async (url) => {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          message: "Found 0 doctors in hubballi.",
+          data: []
+        })
+      };
+    };
+
+    const res = await api.getDoctors("hubballi");
+    assert.equal(res.success, true);
+    assert.deepEqual(res.data, []);
+  });
+
+  test("GET /api/doctors handles backend offline network failure gracefully", async () => {
+    global.fetch = async () => {
+      throw new Error("connect ECONNREFUSED 127.0.0.1:5000");
+    };
+
+    const res = await api.getDoctors("bengaluru");
+    assert.equal(res.success, false);
+    assert.equal(res.offline, true);
+    assert.ok(res.error.includes("ECONNREFUSED"));
+  });
+
+  test("GET /api/doctors handles 500 server error cleanly", async () => {
+    global.fetch = async () => {
+      return {
+        ok: false,
+        status: 500,
+        json: async () => ({
+          success: false,
+          error: "Doctor directory service temporary failure"
+        })
+      };
+    };
+
+    const res = await api.getDoctors("bengaluru");
+    assert.equal(res.success, false);
+    assert.equal(res.status, 500);
+    assert.equal(res.error, "Doctor directory service temporary failure");
+  });
 });
