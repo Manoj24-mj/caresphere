@@ -156,8 +156,9 @@
 
   function bloodCard(item) {
     const blood3d = (window.CareSphere3D && window.CareSphere3D.svg) ? window.CareSphere3D.svg("blood", { width: 36, height: 36 }) : "";
+    const sourceLabel = item._source === "api" ? "<strong style='color:#059669;'>Live Registry API</strong>" : "Sample baseline";
     return `<article class="resource-card"><div class="card-heading"><div style="display:flex;align-items:center;gap:12px">${blood3d}<div><h2>${escapeHtml(item.group)} blood</h2><p>${escapeHtml(item.facility)}</p></div></div>${statusPill(item.status)}</div>
-      <div class="resource-meta"><span>📍 ${escapeHtml(item.location)}</span><span>🛣️ ${item.distance} km</span></div><div class="resource-meta"><strong>${item.units===null?"Units not reported":`${item.units} units (sample)`}</strong></div><p class="sample-update">${escapeHtml(item.updated)}</p></article>`;
+      <div class="resource-meta"><span>📍 ${escapeHtml(item.location)}</span><span>🛣️ ${item.distance} km</span><span>📡 ${sourceLabel}</span></div><div class="resource-meta"><strong>${item.units===null?"Units not reported":item._source==="api"?`${item.units} units verified`:`${item.units} units (sample)`}</strong></div><p class="sample-update">${escapeHtml(item.updated)}</p></article>`;
   }
 
   function bloodPage() {
@@ -395,6 +396,30 @@
               hours: d.workingHours || d.hours || "09:00 AM – 01:30 PM",
               distance: typeof d.distanceKm === "number" ? d.distanceKm : (d.distance || 0),
               status: d.status || "Appointments available",
+              _source: "api"
+            }));
+            render();
+          }
+        }).catch(() => {});
+      }
+    }).catch(() => {});
+  } else if (window.CareSphereAPI && feature === "blood") {
+    window.CareSphereAPI.checkHealth(1500).then(health => {
+      if (health.online) {
+        window.CareSphereAPI.getBloodInventory("bengaluru").then(res => {
+          if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+            demo.blood = res.data.map(b => ({
+              id: b.id,
+              group: b.group,
+              city: b.cityId || "bengaluru",
+              facility: b.facility,
+              location: b.location || "Central District, Bengaluru",
+              phone: b.phone || "+91 80 5550 0105",
+              distance: typeof b.distanceKm === "number" ? b.distanceKm : (typeof b.distance === "number" ? b.distance : 2.4),
+              status: b.status || "Available",
+              units: typeof b.units === "number" ? b.units : 0,
+              updated: b.updated || "Live API registry",
+              compatible: Array.isArray(b.compatible) ? b.compatible : [b.group],
               _source: "api"
             }));
             render();

@@ -1405,6 +1405,9 @@
         if (typeof fetchDoctorsFromAPI === "function") {
           fetchDoctorsFromAPI(city.id, true);
         }
+        if (typeof fetchBloodFromAPI === "function") {
+          fetchBloodFromAPI(city.id, true);
+        }
       }
     }
     function updateCityBadge() {
@@ -1520,6 +1523,13 @@
         lastFetchTime: null
       },
       doctors: {
+        loading: false,
+        error: null,
+        source: "baseline",
+        lastFetchedCity: null,
+        lastFetchTime: null
+      },
+      blood: {
         loading: false,
         error: null,
         source: "baseline",
@@ -1681,6 +1691,83 @@
       render();
     }
 
+    function normalizeBloodFromApi(item) {
+      let dist = typeof item.distanceKm === "number" ? item.distanceKm : (typeof item.distance === "number" ? item.distance : null);
+      if (dist === null) {
+        if (item.facility?.includes("District General")) dist = 2.4;
+        else if (item.facility?.includes("City Medical")) dist = 5.1;
+        else if (item.facility?.includes("Community Care")) dist = 7.8;
+        else dist = 3.5;
+      }
+
+      return {
+        id: item.id || `bld-${item.group}-${Date.now()}`,
+        group: item.group,
+        city: item.cityId || item.city || "bengaluru",
+        facility: item.facility || "Authorized Blood Bank",
+        location: item.location || "Central District, Bengaluru",
+        phone: item.phone || "+91 80 5550 0105",
+        distance: dist,
+        status: item.status || (item.units > 3 ? "Available" : item.units > 0 ? "Limited" : "Unavailable"),
+        units: typeof item.units === "number" ? item.units : 0,
+        updated: item.updated || "Live API registry",
+        compatible: Array.isArray(item.compatible) ? item.compatible : [item.group],
+        _source: "api"
+      };
+    }
+
+    async function fetchBloodFromAPI(cityId, force = false) {
+      if (!window.CareSphereAPI) return;
+      const targetCity = cityId || getActiveCity().id;
+
+      if (!force && apiResourceState.blood.lastFetchedCity === targetCity && !apiResourceState.blood.error && apiResourceState.blood.source === "api") {
+        return;
+      }
+
+      apiResourceState.blood.loading = true;
+      apiResourceState.blood.error = null;
+      render();
+
+      try {
+        const res = await window.CareSphereAPI.getBloodInventory(targetCity);
+        apiResourceState.blood.loading = false;
+        apiResourceState.blood.lastFetchedCity = targetCity;
+
+        if (res.success && Array.isArray(res.data)) {
+          if (res.data.length > 0) {
+            const liveList = res.data.map(normalizeBloodFromApi);
+            const otherCities = bloodAvailability.filter(b => b.city !== targetCity && b._source === "api");
+            bloodAvailability = [...otherCities, ...liveList];
+            apiResourceState.blood.source = "api";
+            apiResourceState.blood.lastFetchTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            apiResourceState.blood.error = null;
+          } else {
+            const otherCities = bloodAvailability.filter(b => b.city !== targetCity);
+            bloodAvailability = [...otherCities];
+            apiResourceState.blood.source = "api";
+            apiResourceState.blood.lastFetchTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            apiResourceState.blood.error = null;
+          }
+        } else if (res.offline) {
+          apiResourceState.blood.source = "baseline";
+          apiResourceState.blood.error = null;
+          const hasCityInState = bloodAvailability.some(b => b.city === targetCity);
+          if (!hasCityInState) {
+            bloodAvailability = baselineBlood.map(b => ({ ...b }));
+          }
+        } else {
+          apiResourceState.blood.error = res.error || "Failed to retrieve blood inventory from server.";
+          apiResourceState.blood.source = "baseline";
+        }
+      } catch (err) {
+        apiResourceState.blood.loading = false;
+        apiResourceState.blood.error = err.message || "Failed to communicate with blood inventory API.";
+        apiResourceState.blood.source = "baseline";
+      }
+
+      render();
+    }
+
     const serviceMedicines = [
       { id: "paracetamol", city: "bengaluru", name: "Paracetamol", strength: "500 mg", availability: "Available", quantity: "128 tablets", provider: "District General Hospital Pharmacy", providerType: "Hospital pharmacy", location: "Central District, Bengaluru", distance: 2.4, updated: "10 minutes ago" },
       { id: "metformin", city: "bengaluru", name: "Metformin", strength: "500 mg", availability: "Limited", quantity: "12 strips", provider: "Jan Aushadhi Kendra", providerType: "Government pharmacy", location: "Central District, Bengaluru", distance: 3.2, updated: "18 minutes ago" },
@@ -1702,13 +1789,15 @@
 
     let serviceDoctors = baselineDoctors.map(d => ({ ...d }));
 
-    const bloodAvailability = [
-      { group: "O+", city: "bengaluru", facility: "District General Hospital Blood Bank", location: "Central District, Bengaluru", phone: "+91 80 5550 0105", distance: 2.4, status: "Available", units: 14, updated: "12 minutes ago", compatible: ["O+", "A+", "B+", "AB+"] },
-      { group: "A+", city: "bengaluru", facility: "City Medical Centre Blood Bank", location: "North District, Bengaluru", phone: "+91 80 5550 0205", distance: 5.1, status: "Limited", units: 3, updated: "25 minutes ago", compatible: ["A+", "AB+"] },
-      { group: "B+", city: "bengaluru", facility: "District General Hospital Blood Bank", location: "Central District, Bengaluru", phone: "+91 80 5550 0105", distance: 2.4, status: "Available", units: 8, updated: "15 minutes ago", compatible: ["B+", "AB+"] },
-      { group: "AB+", city: "bengaluru", facility: "City Medical Centre Blood Bank", location: "North District, Bengaluru", phone: "+91 80 5550 0205", distance: 5.1, status: "Available", units: 5, updated: "35 minutes ago", compatible: ["AB+ only"] },
-      { group: "O−", city: "bengaluru", facility: "Community Care Hospital Blood Bank", location: "East District, Bengaluru", phone: "+91 80 5550 0305", distance: 7.8, status: "Limited", units: 1, updated: "10 minutes ago", compatible: ["Universal Donor (All groups)"] }
+    const baselineBlood = [
+      { id: "bld-1", group: "O+", city: "bengaluru", facility: "District General Hospital Blood Bank", location: "Central District, Bengaluru", phone: "+91 80 5550 0105", distance: 2.4, status: "Available", units: 14, updated: "12 minutes ago", compatible: ["O+", "A+", "B+", "AB+"], _source: "baseline" },
+      { id: "bld-2", group: "A+", city: "bengaluru", facility: "City Medical Centre Blood Bank", location: "North District, Bengaluru", phone: "+91 80 5550 0205", distance: 5.1, status: "Limited", units: 3, updated: "25 minutes ago", compatible: ["A+", "AB+"], _source: "baseline" },
+      { id: "bld-3", group: "B+", city: "bengaluru", facility: "District General Hospital Blood Bank", location: "Central District, Bengaluru", phone: "+91 80 5550 0105", distance: 2.4, status: "Available", units: 8, updated: "15 minutes ago", compatible: ["B+", "AB+"], _source: "baseline" },
+      { id: "bld-4", group: "AB+", city: "bengaluru", facility: "City Medical Centre Blood Bank", location: "North District, Bengaluru", phone: "+91 80 5550 0205", distance: 5.1, status: "Available", units: 5, updated: "35 minutes ago", compatible: ["AB+ only"], _source: "baseline" },
+      { id: "bld-5", group: "O−", city: "bengaluru", facility: "Community Care Hospital Blood Bank", location: "East District, Bengaluru", phone: "+91 80 5550 0305", distance: 7.8, status: "Limited", units: 1, updated: "10 minutes ago", compatible: ["Universal Donor (All groups)"], _source: "baseline" }
     ];
+
+    let bloodAvailability = baselineBlood.map(b => ({ ...b }));
 
     /* PERSONAL MEDICAL RECORDS STORE */
     const defaultMedicalRecords = {
@@ -2739,9 +2828,10 @@
     function serviceFreshness(moduleName = "hospitals") {
       const state = apiResourceState[moduleName] || apiResourceState.hospitals;
       const isDoctor = moduleName === "doctors";
-      const refreshAction = isDoctor ? "refresh-doctors" : "refresh-hospitals";
-      const retryAction = isDoctor ? "retry-doctors" : "retry-hospitals";
-      const entityLabel = isDoctor ? "Clinicians" : "Registry";
+      const isBlood = moduleName === "blood";
+      const refreshAction = isDoctor ? "refresh-doctors" : isBlood ? "refresh-blood" : "refresh-hospitals";
+      const retryAction = isDoctor ? "retry-doctors" : isBlood ? "retry-blood" : "retry-hospitals";
+      const entityLabel = isDoctor ? "Clinicians" : isBlood ? "Blood Inventory" : "Registry";
 
       if (state.source === "api") {
         return `
@@ -3162,6 +3252,27 @@
             <div style="margin-top:12px;"><button class="button small" type="button" data-action="set-city-bengaluru">Switch to Bengaluru (Active Node)</button></div>
           </div>`;
       }
+
+      if (apiResourceState.blood.loading) {
+        return `${sectionHeading("Blood Availability", `Live blood bank stock & compatibility in ${city.name}, ${city.state}`)}${serviceBackLink()}${serviceFreshness("blood")}
+          <div class="service-notice" style="display:flex;align-items:center;gap:14px;padding:28px 20px;">
+            <div style="width:22px;height:22px;border:3px solid #CBD5E1;border-top-color:#3478F6;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+            <div>
+              <h3 style="margin:0 0 4px;font-size:15px;color:#1E293B;">Retrieving live blood inventory...</h3>
+              <p style="margin:0;color:#64748B;font-size:12.5px;">Contacting CareSphere Municipal Registry node for ${city.name}.</p>
+            </div>
+          </div>`;
+      }
+
+      const errorNotice = apiResourceState.blood.error ? `
+        <div class="service-notice error-notice" style="border-left:4px solid #EF4444;background:#FEF2F2;color:#991B1B;padding:12px 16px;margin-bottom:14px;border-radius:10px;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <strong>Blood Registry Sync Error:</strong> ${escapeHtml(apiResourceState.blood.error)}
+            <div style="font-size:11.5px;color:#B91C1C;margin-top:2px;">Displaying local baseline blood stock. Figures are illustrative and not live verified.</div>
+          </div>
+          <button class="button small" type="button" data-action="retry-blood" style="margin-left:12px;">Retry</button>
+        </div>` : "";
+
       let items = bloodAvailability.filter(b => b.city === city.id);
       if (serviceState.bloodGroup && serviceState.bloodGroup !== "All") {
         items = items.filter(b => b.group === serviceState.bloodGroup);
@@ -3192,8 +3303,12 @@
           <div style="margin:12px 0;">
             <span class="blood-compat-pill">Compatible: ${b.compatible.join(", ")}</span>
           </div>
+          <div style="display:flex;justify-content:space-between;padding:10px 14px;border-radius:10px;background:#F8FAFD;border:1px solid #E2E8F0;font-size:12.5px;margin-bottom:12px;">
+            <span><strong>Available Units:</strong> ${b.units === null ? "Not reported" : `${b.units} units`}</span>
+            <span><strong>Data Source:</strong> ${b._source === "api" ? "<strong style='color:#059669;'>Live Registry API</strong>" : "<strong style='color:#D97706;'>Local Baseline (Sample)</strong>"}</span>
+          </div>
           <div class="resource-foot" style="display:flex;align-items:center;justify-content:space-between;">
-            <strong>${b.units === null ? "Units not reported" : `${b.units} units verified`}</strong>
+            <strong>${b.units === null ? "Units not reported" : b._source === "api" ? `${b.units} units verified` : `${b.units} units (sample)`}</strong>
             <span class="service-freshness">Updated ${b.updated}</span>
           </div>
           <div class="service-actions" style="margin-top:12px;">
@@ -3203,13 +3318,19 @@
         </article>`;
       }).join("");
 
-      return `${sectionHeading("Blood Availability", `Live blood bank stock & compatibility in ${city.name}, ${city.state}`)}${serviceBackLink()}${serviceFreshness()}
+      const emptyNotice = `
+        <div class="service-notice" style="text-align:center;padding:32px 16px;">
+          <p style="margin:0 0 12px;font-size:14px;color:#475569;">No blood stock reported for group "${escapeHtml(serviceState.bloodGroup)}" in ${city.name}.</p>
+          <button class="button small secondary" type="button" data-action="clear-blood-filters">Show All Blood Groups</button>
+        </div>`;
+
+      return `${sectionHeading("Blood Availability", `Live blood bank stock & compatibility in ${city.name}, ${city.state}`)}${serviceBackLink()}${serviceFreshness("blood")}${errorNotice}
         <div class="service-tools">
           <select aria-label="Blood group filter" data-service-filter="bloodGroup">
             ${bloodGroups.map(g => `<option value="${g}" ${serviceState.bloodGroup === g ? "selected" : ""}>${g === "All" ? "All Blood Groups" : `Group ${g}`}</option>`).join("")}
           </select>
         </div>
-        <div class="resource-list">${cards || '<div class="service-notice">No blood stock reported for this group.</div>'}</div>
+        <div class="resource-list">${cards || emptyNotice}</div>
         <p class="service-notice warning"><strong>Protocol Notice:</strong> Blood inventory updates in real-time. Unverified stock is never shown as confirmed availability. Call the blood bank facility directly to reserve units.</p>`;
     }
 
@@ -3908,6 +4029,8 @@
           fetchHospitalsFromAPI(getActiveCity().id);
         } else if (serviceState.page === "doctors") {
           fetchDoctorsFromAPI(getActiveCity().id);
+        } else if (serviceState.page === "blood") {
+          fetchBloodFromAPI(getActiveCity().id);
         }
         render();
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -3921,6 +4044,8 @@
           fetchHospitalsFromAPI(getActiveCity().id);
         } else if (serviceState.page === "doctors") {
           fetchDoctorsFromAPI(getActiveCity().id);
+        } else if (serviceState.page === "blood") {
+          fetchBloodFromAPI(getActiveCity().id);
         }
         render();
       } else if (target.dataset.action === "change-city") openCityModal();
@@ -3944,6 +4069,18 @@
       else if (target.dataset.action === "clear-doctor-filters") {
         serviceState.doctorQuery = "";
         serviceState.doctorSpecialty = "All";
+        render();
+      }
+      else if (target.dataset.action === "refresh-blood") {
+        showToast("Fetching live blood inventory from municipal node...");
+        fetchBloodFromAPI(getActiveCity().id, true);
+      }
+      else if (target.dataset.action === "retry-blood") {
+        showToast("Connecting to blood inventory API...");
+        fetchBloodFromAPI(getActiveCity().id, true);
+      }
+      else if (target.dataset.action === "clear-blood-filters") {
+        serviceState.bloodGroup = "All";
         render();
       }
       else if (target.dataset.action === "clear-hospital-filters") {
@@ -4169,6 +4306,9 @@
         if (online && apiResourceState.doctors.source !== "api") {
           fetchDoctorsFromAPI(getActiveCity().id);
         }
+        if (online && apiResourceState.blood.source !== "api") {
+          fetchBloodFromAPI(getActiveCity().id);
+        }
       });
       document.getElementById("apiStatusBadge")?.addEventListener("click", () => {
         showToast("Checking CareSphere backend connection...");
@@ -4177,6 +4317,7 @@
             showToast(`CareSphere API connected (${res.latency}ms)`);
             fetchHospitalsFromAPI(getActiveCity().id, true);
             fetchDoctorsFromAPI(getActiveCity().id, true);
+            fetchBloodFromAPI(getActiveCity().id, true);
           } else {
             showToast("CareSphere backend offline. Operating in local baseline mode.");
           }
@@ -4254,6 +4395,8 @@
             fetchHospitalsFromAPI(getActiveCity().id);
           } else if (serviceState.page === "doctors") {
             fetchDoctorsFromAPI(getActiveCity().id);
+          } else if (serviceState.page === "blood") {
+            fetchBloodFromAPI(getActiveCity().id);
           }
         }
       }

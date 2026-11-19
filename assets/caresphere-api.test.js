@@ -303,4 +303,120 @@ describe("CareSphere Frontend API Client", () => {
     assert.equal(res.status, 500);
     assert.equal(res.error, "Doctor directory service temporary failure");
   });
+
+  test("GET /api/blood-inventory successfully retrieves and parses blood stock listings", async () => {
+    global.fetch = async (url) => {
+      assert.ok(url.includes("/api/blood-inventory?city=bengaluru"));
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          message: "Retrieved 5 blood stock listings in bengaluru.",
+          data: [
+            {
+              id: "bld-1",
+              group: "O+",
+              cityId: "bengaluru",
+              facility: "District General Hospital Blood Bank",
+              location: "Central District, Bengaluru",
+              phone: "+91 80 5550 0105",
+              units: 14,
+              status: "Available",
+              updated: "12 minutes ago",
+              compatible: ["O+", "A+", "B+", "AB+"]
+            }
+          ]
+        })
+      };
+    };
+
+    const res = await api.getBloodInventory("bengaluru");
+    assert.equal(res.success, true);
+    assert.equal(res.data.length, 1);
+    assert.equal(res.data[0].group, "O+");
+    assert.equal(res.data[0].units, 14);
+    assert.equal(res.data[0].facility, "District General Hospital Blood Bank");
+  });
+
+  test("GET /api/blood-inventory filters by blood group", async () => {
+    global.fetch = async (url) => {
+      assert.ok(url.includes("group=A%2B") || url.includes("group=A+"));
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          message: "Retrieved 1 blood stock listings in bengaluru.",
+          data: [
+            {
+              id: "bld-2",
+              group: "A+",
+              cityId: "bengaluru",
+              facility: "City Medical Centre Blood Bank",
+              location: "North District, Bengaluru",
+              phone: "+91 80 5550 0205",
+              units: 3,
+              status: "Limited",
+              updated: "25 minutes ago",
+              compatible: ["A+", "AB+"]
+            }
+          ]
+        })
+      };
+    };
+
+    const res = await api.getBloodInventory("bengaluru", "A+");
+    assert.equal(res.success, true);
+    assert.equal(res.data.length, 1);
+    assert.equal(res.data[0].group, "A+");
+    assert.equal(res.data[0].units, 3);
+  });
+
+  test("GET /api/blood-inventory handles empty results for unonboarded cities", async () => {
+    global.fetch = async (url) => {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          message: "Retrieved 0 blood stock listings in mangaluru.",
+          data: []
+        })
+      };
+    };
+
+    const res = await api.getBloodInventory("mangaluru");
+    assert.equal(res.success, true);
+    assert.deepEqual(res.data, []);
+  });
+
+  test("GET /api/blood-inventory handles backend offline network failure gracefully", async () => {
+    global.fetch = async () => {
+      throw new Error("connect ECONNREFUSED 127.0.0.1:5000");
+    };
+
+    const res = await api.getBloodInventory("bengaluru");
+    assert.equal(res.success, false);
+    assert.equal(res.offline, true);
+    assert.ok(res.error.includes("ECONNREFUSED"));
+  });
+
+  test("GET /api/blood-inventory handles 500 server error cleanly", async () => {
+    global.fetch = async () => {
+      return {
+        ok: false,
+        status: 500,
+        json: async () => ({
+          success: false,
+          error: "Blood inventory service temporary failure"
+        })
+      };
+    };
+
+    const res = await api.getBloodInventory("bengaluru");
+    assert.equal(res.success, false);
+    assert.equal(res.status, 500);
+    assert.equal(res.error, "Blood inventory service temporary failure");
+  });
 });

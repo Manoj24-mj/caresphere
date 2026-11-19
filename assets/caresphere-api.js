@@ -192,8 +192,9 @@
     /* =================================================================
      * 4. BLOOD AVAILABILITY
      * ================================================================= */
-    async getBloodInventory(city = "bengaluru", group = "All") {
-      const q = new URLSearchParams({ city, group }).toString();
+    async getBloodInventory(city = "bengaluru", params = "All") {
+      const queryParams = typeof params === "string" ? { city, group: params } : { city, ...params };
+      const q = new URLSearchParams(queryParams).toString();
       return this.request(`/blood-inventory?${q}`);
     }
 
