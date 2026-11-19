@@ -1411,6 +1411,9 @@
         if (typeof fetchMedicinesFromAPI === "function") {
           fetchMedicinesFromAPI(city.id, true);
         }
+        if (typeof fetchAmbulancesFromAPI === "function") {
+          fetchAmbulancesFromAPI(city.id, true);
+        }
       }
     }
     function updateCityBadge() {
@@ -1545,6 +1548,16 @@
         source: "baseline",
         lastFetchedCity: null,
         lastFetchTime: null
+      },
+      ambulances: {
+        loading: false,
+        error: null,
+        source: "baseline",
+        lastFetchedCity: null,
+        lastFetchTime: null,
+        dispatchSubmitting: false,
+        dispatchError: null,
+        lastDispatch: null
       }
     };
 
@@ -1857,11 +1870,94 @@
 
     let serviceMedicines = baselineMedicines.map(m => ({ ...m }));
 
-    const serviceAmbulances = [
-      { id: "KA-01-AB-1234", city: "bengaluru", provider: "Karnataka 108 Emergency Network", phone: "+91 80 2200 1080", type: "Advanced Life Support", distance: 1.8, eta: 6, status: "Available" },
-      { id: "KA-01-XY-4820", city: "bengaluru", provider: "City Red Cross Rapid Response", phone: "+91 80 2200 4820", type: "Basic Life Support", distance: 3.4, eta: 11, status: "Limited" },
-      { id: "KA-02-CD-9021", city: "bengaluru", provider: "Metro Patient Transfer Logistics", phone: "+91 80 2200 9021", type: "Patient Transport", distance: 5.2, eta: 16, status: "Unavailable" }
+    function normalizeAmbulanceFromApi(item) {
+      const typeMap = {
+        "ADVANCED_LIFE_SUPPORT": "Advanced Life Support",
+        "BASIC_LIFE_SUPPORT": "Basic Life Support",
+        "PATIENT_TRANSPORT": "Patient Transport",
+        "NEONATAL_CARE": "Neonatal Care"
+      };
+      const normalizedType = typeMap[item.type] || item.type || "Basic Life Support";
+
+      const statusMap = {
+        "AVAILABLE": "Available",
+        "LIMITED": "Limited",
+        "UNAVAILABLE": "Unavailable"
+      };
+      const normalizedStatus = statusMap[item.status] || (item.status ? (item.status.charAt(0).toUpperCase() + item.status.slice(1).toLowerCase()) : "Available");
+
+      return {
+        id: item.id,
+        city: item.cityId || item.city || "bengaluru",
+        provider: item.provider || "Municipal Emergency Response Network",
+        phone: item.phone || "+91 80 2200 1080",
+        type: normalizedType,
+        distance: typeof item.distanceKm === "number" ? item.distanceKm : (typeof item.distance === "number" ? item.distance : 2.5),
+        eta: typeof item.etaMinutes === "number" ? item.etaMinutes : (typeof item.eta === "number" ? item.eta : 10),
+        status: normalizedStatus,
+        _source: "api"
+      };
+    }
+
+    async function fetchAmbulancesFromAPI(cityId, force = false) {
+      if (!window.CareSphereAPI) return;
+      const targetCity = cityId || getActiveCity().id;
+
+      if (!force && apiResourceState.ambulances.lastFetchedCity === targetCity && !apiResourceState.ambulances.error && apiResourceState.ambulances.source === "api") {
+        return;
+      }
+
+      apiResourceState.ambulances.loading = true;
+      apiResourceState.ambulances.error = null;
+      render();
+
+      try {
+        const res = await window.CareSphereAPI.getAmbulances(targetCity);
+        apiResourceState.ambulances.loading = false;
+        apiResourceState.ambulances.lastFetchedCity = targetCity;
+
+        if (res.success && Array.isArray(res.data)) {
+          if (res.data.length > 0) {
+            const liveList = res.data.map(normalizeAmbulanceFromApi);
+            const otherCities = serviceAmbulances.filter(a => a.city !== targetCity && a._source === "api");
+            serviceAmbulances = [...otherCities, ...liveList];
+            apiResourceState.ambulances.source = "api";
+            apiResourceState.ambulances.lastFetchTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            apiResourceState.ambulances.error = null;
+          } else {
+            const otherCities = serviceAmbulances.filter(a => a.city !== targetCity);
+            serviceAmbulances = [...otherCities];
+            apiResourceState.ambulances.source = "api";
+            apiResourceState.ambulances.lastFetchTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            apiResourceState.ambulances.error = null;
+          }
+        } else if (res.offline) {
+          apiResourceState.ambulances.source = "baseline";
+          apiResourceState.ambulances.error = null;
+          const hasCityInState = serviceAmbulances.some(a => a.city === targetCity);
+          if (!hasCityInState) {
+            serviceAmbulances = baselineAmbulances.map(a => ({ ...a }));
+          }
+        } else {
+          apiResourceState.ambulances.error = res.error || "Failed to retrieve emergency response fleet status from server.";
+          apiResourceState.ambulances.source = "baseline";
+        }
+      } catch (err) {
+        apiResourceState.ambulances.loading = false;
+        apiResourceState.ambulances.error = err.message || "Failed to communicate with emergency response registry API.";
+        apiResourceState.ambulances.source = "baseline";
+      }
+
+      render();
+    }
+
+    const baselineAmbulances = [
+      { id: "KA-01-AB-1234", city: "bengaluru", provider: "Karnataka 108 Emergency Network", phone: "+91 80 2200 1080", type: "Advanced Life Support", distance: 1.8, eta: 6, status: "Available", _source: "baseline" },
+      { id: "KA-01-XY-4820", city: "bengaluru", provider: "City Red Cross Rapid Response", phone: "+91 80 2200 4820", type: "Basic Life Support", distance: 3.4, eta: 11, status: "Limited", _source: "baseline" },
+      { id: "KA-02-CD-9021", city: "bengaluru", provider: "Metro Patient Transfer Logistics", phone: "+91 80 2200 9021", type: "Patient Transport", distance: 5.2, eta: 16, status: "Unavailable", _source: "baseline" }
     ];
+
+    let serviceAmbulances = baselineAmbulances.map(a => ({ ...a }));
 
     const baselineDoctors = [
       { id: "dr-priya", city: "bengaluru", name: "Dr. Priya Sharma", specialty: "Cardiology", qualification: "MBBS, MD (Med), DM (Cardiology)", facility: "District General Hospital", department: "Cardiology & Cardiac Care", hours: "09:00 AM – 01:30 PM", distance: 2.4, status: "Appointments available", _source: "baseline" },
@@ -2912,9 +3008,10 @@
       const isDoctor = moduleName === "doctors";
       const isBlood = moduleName === "blood";
       const isMedicine = moduleName === "medicines";
-      const refreshAction = isDoctor ? "refresh-doctors" : isBlood ? "refresh-blood" : isMedicine ? "refresh-medicines" : "refresh-hospitals";
-      const retryAction = isDoctor ? "retry-doctors" : isBlood ? "retry-blood" : isMedicine ? "retry-medicines" : "retry-hospitals";
-      const entityLabel = isDoctor ? "Clinicians" : isBlood ? "Blood Inventory" : isMedicine ? "Medicine Inventory" : "Registry";
+      const isAmbulance = moduleName === "ambulances";
+      const refreshAction = isDoctor ? "refresh-doctors" : isBlood ? "refresh-blood" : isMedicine ? "refresh-medicines" : isAmbulance ? "refresh-ambulances" : "refresh-hospitals";
+      const retryAction = isDoctor ? "retry-doctors" : isBlood ? "retry-blood" : isMedicine ? "retry-medicines" : isAmbulance ? "retry-ambulances" : "retry-hospitals";
+      const entityLabel = isDoctor ? "Clinicians" : isBlood ? "Blood Inventory" : isMedicine ? "Medicine Inventory" : isAmbulance ? "Ambulance Fleet" : "Registry";
 
       if (state.source === "api") {
         return `
@@ -3546,17 +3643,42 @@
             <div style="margin-top:12px;"><button class="button small" type="button" data-action="set-city-bengaluru">Switch to Bengaluru (Active Node)</button></div>
           </div>`;
       }
+
+      if (apiResourceState.ambulances.loading) {
+        return `${sectionHeading("Ambulance Services", `Emergency response in ${city.name}, ${city.state}`)}${serviceBackLink()}${serviceFreshness("ambulances")}
+          <div class="service-notice" style="display:flex;align-items:center;gap:14px;padding:28px 20px;">
+            <div style="width:22px;height:22px;border:3px solid #CBD5E1;border-top-color:#DC2626;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+            <div>
+              <h3 style="margin:0 0 4px;font-size:15px;color:#1E293B;">Retrieving emergency response fleet status...</h3>
+              <p style="margin:0;color:#64748B;font-size:12.5px;">Connecting to CareSphere Municipal Dispatch Node for ${city.name}.</p>
+            </div>
+          </div>`;
+      }
+
+      const errorNotice = apiResourceState.ambulances.error ? `
+        <div class="service-notice error-notice" style="border-left:4px solid #EF4444;background:#FEF2F2;color:#991B1B;padding:12px 16px;margin-bottom:14px;border-radius:10px;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <strong>Dispatch Node Sync Error:</strong> ${escapeHtml(apiResourceState.ambulances.error)}
+            <div style="font-size:11.5px;color:#B91C1C;margin-top:2px;">Displaying local baseline fleet records. Fleet statuses are illustrative and not live verified.</div>
+          </div>
+          <button class="button small" type="button" data-action="retry-ambulances" style="margin-left:12px;">Retry</button>
+        </div>` : "";
+
       const ambulances = serviceAmbulances.filter(a => a.city === city.id);
-      const cards = ambulances.map(a => {
+      const cards = ambulances.length > 0 ? ambulances.map(a => {
         const amb3d = (window.CareSphere3D && window.CareSphere3D.svg) ? window.CareSphere3D.svg("ambulance", { width: 44, height: 44 }) : "";
+        const sourceLabel = a._source === "api"
+          ? `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:6px;background:#ECFDF5;color:#047857;font-size:11px;font-weight:600;"><span style="width:5px;height:5px;border-radius:50%;background:#10B981;"></span>Live Registry API</span>`
+          : `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:6px;background:#FFFBEB;color:#B45309;font-size:11px;font-weight:600;"><span style="width:5px;height:5px;border-radius:50%;background:#F59E0B;"></span>Local Baseline (Sample)</span>`;
+
         return `
         <article class="resource-card">
           <div class="resource-head">
             <div style="display:flex;align-items:center;gap:12px;">
               ${amb3d}
               <div>
-                <h3>Ambulance ${a.id}</h3>
-                <p><strong>${a.type}</strong> · ${a.provider}</p>
+                <h3>Ambulance ${escapeHtml(a.id)}</h3>
+                <p><strong>${escapeHtml(a.type)}</strong> · ${escapeHtml(a.provider)}</p>
               </div>
             </div>
             ${serviceStatus(a.status)}
@@ -3564,16 +3686,22 @@
           <div class="resource-meta">
             <span>🛣️ ${a.distance} km away</span>
             <span>⏱️ Estimated Arrival: <strong>~${a.eta} mins</strong></span>
-            <span>📞 <a href="tel:${a.phone.replace(/\s+/g,'')}" style="color:inherit;font-weight:750;">${a.phone}</a></span>
+            <span>📞 <a href="tel:${String(a.phone).replace(/\s+/g,'')}" style="color:inherit;font-weight:750;">${escapeHtml(a.phone)}</a></span>
+            <span>📡 ${sourceLabel}</span>
           </div>
           <div class="service-actions" style="margin-top:14px;">
-            <button class="button emergency small" type="button" data-service-route="ambulance-request" data-ambulance="${a.id}" ${a.status === "Unavailable" ? "disabled" : ""}>Request Emergency Response</button>
-            <a class="button secondary small" href="tel:${a.phone.replace(/\s+/g,'')}">Call Dispatch</a>
+            <button class="button emergency small" type="button" data-service-route="ambulance-request" data-ambulance="${escapeHtml(a.id)}" ${a.status === "Unavailable" ? "disabled" : ""}>Request Emergency Response</button>
+            <a class="button secondary small" href="tel:${String(a.phone).replace(/\s+/g,'')}">Call Dispatch</a>
           </div>
         </article>`;
-      }).join("");
+      }).join("") : `
+        <div class="service-notice" style="text-align:center;padding:32px 16px;">
+          <h3 style="margin:0 0 6px;font-size:15px;color:#1E293B;">No ambulance units currently reported in ${city.name}</h3>
+          <p style="margin:0 0 14px;color:#64748B;font-size:13px;">No response units match the current municipal registry query.</p>
+          <button class="button small" type="button" data-action="refresh-ambulances">Check Fleet Status</button>
+        </div>`;
 
-      return `${sectionHeading("Ambulance Services", `Emergency response fleet in ${city.name}, ${city.state}`)}${serviceBackLink()}
+      return `${sectionHeading("Ambulance Services", `Emergency response fleet in ${city.name}, ${city.state}`)}${serviceBackLink()}${serviceFreshness("ambulances")}${errorNotice}
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
           <a class="quick-call-card" href="tel:108" style="text-decoration:none;">
             <span class="call-num">108</span>
@@ -3592,22 +3720,33 @@
       const a = serviceAmbulances.find(item => item.id === serviceState.ambulanceId);
       if (!a) { serviceState.page = "ambulances"; return renderAmbulances(); }
       const r = serviceState.request;
-      return `${sectionHeading("Emergency Ambulance Request", `Unit: ${a.id} (${a.type}) · Provider: ${a.provider}`)}${serviceBackLink("Back to ambulances")}
-        <p class="service-notice warning"><strong>Emergency Notice:</strong> Submitting prepares hospital triage and notifies the nearest response dispatch center. If symptoms are critical, keep your phone free for incoming dispatch calls.</p>
+      const isSubmitting = apiResourceState.ambulances.dispatchSubmitting;
+      const dispatchError = apiResourceState.ambulances.dispatchError;
+
+      const errorNotice = dispatchError ? `
+        <div class="service-notice error-notice" style="border-left:4px solid #EF4444;background:#FEF2F2;color:#991B1B;padding:12px 16px;margin-bottom:16px;border-radius:10px;">
+          <strong>Dispatch Error:</strong> ${escapeHtml(dispatchError)}
+        </div>` : "";
+
+      return `${sectionHeading("Emergency Ambulance Request", `Unit: ${escapeHtml(a.id)} (${escapeHtml(a.type)}) · Provider: ${escapeHtml(a.provider)}`)}${serviceBackLink("Back to ambulances")}
+        <p class="service-notice warning"><strong>Emergency Notice:</strong> Submitting transmits an emergency dispatch order to the municipal response fleet and prepares hospital triage. If symptoms are critical, dial 108 or 112 immediately and keep your phone free.</p>
+        ${errorNotice}
         <form class="detail-panel" id="ambulanceRequestForm">
           <h2>Request &amp; Triage Details</h2>
           <div class="req-legend"><span class="required-star">*</span> Indicates required fields for emergency dispatch</div>
           <div class="service-form">
-            <label><span>Pickup Location (Street, Landmark, City) <span class="required-star" aria-hidden="true">*</span></span><input class="service-form-control" name="pickup" required value="${escapeHtml(r.pickup)}" placeholder="e.g. Indiranagar 100ft Road, Bengaluru"></label>
-            <label><span>Emergency Type <span class="required-star" aria-hidden="true">*</span></span><select class="service-form-control" name="emergencyType" required>${["Medical emergency", "Accident / trauma", "Cardiac / chest pain", "Pregnancy / delivery complication", "Patient transfer"].map(x => `<option ${r.emergencyType === x ? "selected" : ""}>${x}</option>`).join("")}</select></label>
-            <label><span>Destination Hospital <span class="required-star" aria-hidden="true">*</span></span><select class="service-form-control" name="destination" required>${serviceHospitals.map(h => `<option ${r.destination === h.name ? "selected" : ""}>${h.name}</option>`).join("")}</select></label>
-            <label><span>Patient Full Name <span class="required-star" aria-hidden="true">*</span></span><input class="service-form-control" name="patientName" required value="${escapeHtml(r.patientName)}" placeholder="Patient name"></label>
-            <label><span>Contact Phone Number <span class="required-star" aria-hidden="true">*</span></span><input class="service-form-control" name="contact" type="tel" value="${escapeHtml(r.contact)}" placeholder="+91 98450 12345" required></label>
-            <label class="full"><span>Patient Condition / Symptoms (Optional)</span><textarea class="service-form-control" name="notes" placeholder="Briefly describe conscious status, symptoms or oxygen requirements">${escapeHtml(r.notes)}</textarea></label>
+            <label><span>Pickup Location (Street, Landmark, City) <span class="required-star" aria-hidden="true">*</span></span><input class="service-form-control" name="pickup" required value="${escapeHtml(r.pickup)}" placeholder="e.g. Indiranagar 100ft Road, Bengaluru" ${isSubmitting ? "disabled" : ""}></label>
+            <label><span>Emergency Type <span class="required-star" aria-hidden="true">*</span></span><select class="service-form-control" name="emergencyType" required ${isSubmitting ? "disabled" : ""}>${["Medical emergency", "Accident / trauma", "Cardiac / chest pain", "Pregnancy / delivery complication", "Patient transfer"].map(x => `<option ${r.emergencyType === x ? "selected" : ""}>${x}</option>`).join("")}</select></label>
+            <label><span>Destination Hospital <span class="required-star" aria-hidden="true">*</span></span><select class="service-form-control" name="destination" required ${isSubmitting ? "disabled" : ""}>${serviceHospitals.map(h => `<option ${r.destination === h.name ? "selected" : ""}>${h.name}</option>`).join("")}</select></label>
+            <label><span>Patient Full Name <span class="required-star" aria-hidden="true">*</span></span><input class="service-form-control" name="patientName" required value="${escapeHtml(r.patientName)}" placeholder="Patient name" ${isSubmitting ? "disabled" : ""}></label>
+            <label><span>Contact Phone Number <span class="required-star" aria-hidden="true">*</span></span><input class="service-form-control" name="contact" type="tel" value="${escapeHtml(r.contact)}" placeholder="+91 98450 12345" required ${isSubmitting ? "disabled" : ""}></label>
+            <label class="full"><span>Patient Condition / Symptoms (Optional)</span><textarea class="service-form-control" name="notes" placeholder="Briefly describe conscious status, symptoms or oxygen requirements" ${isSubmitting ? "disabled" : ""}>${escapeHtml(r.notes)}</textarea></label>
           </div>
           <div class="service-actions" style="margin-top:18px;">
-            <button class="button emergency" type="submit">🚨 Submit Emergency Dispatch Request</button>
-            <button class="button secondary" type="button" data-service-route="ambulances">Cancel</button>
+            <button class="button emergency" type="submit" ${isSubmitting ? "disabled" : ""} style="${isSubmitting ? "opacity:0.65;cursor:not-allowed;" : ""}">
+              ${isSubmitting ? "🚨 Transmitting Dispatch Order..." : "🚨 Submit Emergency Dispatch Request"}
+            </button>
+            <button class="button secondary" type="button" data-service-route="ambulances" ${isSubmitting ? "disabled" : ""}>Cancel</button>
           </div>
         </form>`;
     }
@@ -3615,26 +3754,44 @@
     function renderAmbulanceTracking() {
       const a = serviceAmbulances.find(item => item.id === serviceState.ambulanceId) || serviceAmbulances[0];
       const r = serviceState.request;
-      return `${sectionHeading("Emergency Dispatch Status", `Unit: Ambulance ${a.id}`)}${serviceBackLink("Back to ambulances")}
+      const lastDispatch = apiResourceState.ambulances.lastDispatch;
+
+      const verifiedBadge = lastDispatch ? `
+        <div style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:6px;color:#065F46;font-size:12px;font-weight:600;margin-bottom:12px;">
+          <span style="width:6px;height:6px;border-radius:50%;background:#10B981;"></span>
+          Verified Municipal Dispatch Order: ${escapeHtml(lastDispatch.id)} · Status: ${escapeHtml(lastDispatch.status)}
+        </div>` : "";
+
+      const etaDisplay = lastDispatch?.ambulance?.etaMinutes ? `~${lastDispatch.ambulance.etaMinutes} minutes` : (a.eta ? `~${a.eta} minutes` : "Calculating");
+      const unitDisplay = lastDispatch?.ambulance?.id || a.id;
+      const providerDisplay = lastDispatch?.ambulance?.provider || a.provider;
+
+      return `${sectionHeading("Emergency Dispatch Status", `Unit: Ambulance ${escapeHtml(unitDisplay)}`)}${serviceBackLink("Back to ambulances")}
         <section class="detail-panel">
+          ${verifiedBadge}
           <div class="tracking-status">
             <span class="service-hub-icon">↗</span>
             <div>
               <strong style="font-size:16px;">Dispatch Request Active</strong>
-              <p style="margin:4px 0 0;color:#64748B;">Unit ${a.id} assigned · Estimated arrival ~${a.eta} minutes</p>
+              <p style="margin:4px 0 0;color:#64748B;">Unit ${escapeHtml(unitDisplay)} assigned · Estimated arrival ${etaDisplay}</p>
             </div>
           </div>
           <div class="detail-facts" style="margin-top:16px;">
-            <div class="detail-fact"><span>Ambulance Unit</span><strong>${a.id} (${a.type})</strong></div>
-            <div class="detail-fact"><span>Provider</span><strong>${a.provider}</strong></div>
+            <div class="detail-fact"><span>Ambulance Unit</span><strong>${escapeHtml(unitDisplay)}</strong></div>
+            <div class="detail-fact"><span>Provider</span><strong>${escapeHtml(providerDisplay)}</strong></div>
             <div class="detail-fact"><span>Pickup Location</span><strong>${escapeHtml(r.pickup || "Central Bengaluru")}</strong></div>
-            <div class="detail-fact"><span>Destination</span><strong>${escapeHtml(r.destination)}</strong></div>
+            <div class="detail-fact"><span>Destination</span><strong>${escapeHtml(r.destination || "District General Hospital")}</strong></div>
             <div class="detail-fact"><span>Patient</span><strong>${escapeHtml(r.patientName || "Reported Patient")}</strong></div>
+            <div class="detail-fact"><span>Emergency Type</span><strong>${escapeHtml(r.emergencyType || "Medical emergency")}</strong></div>
           </div>
           <div class="status-timeline" style="margin-top:20px;">
             <div class="is-done">✓ Incident triage details recorded</div>
-            <div class="is-active">● Response vehicle dispatched (ETA ~${a.eta} min)</div>
+            <div class="is-active">● Response vehicle dispatched (ETA ${etaDisplay})</div>
             <div>○ Emergency department bed readiness notification sent</div>
+          </div>
+          <div class="service-actions" style="margin-top:20px;display:flex;gap:10px;">
+            <a class="button emergency small" href="tel:${String(lastDispatch?.ambulance?.phone || a.phone).replace(/\s+/g,'')}">📞 Call Assigned Driver</a>
+            <button class="button secondary small" type="button" data-action="refresh-tracking" ${!lastDispatch ? "disabled" : ""}>↻ Refresh Live Status</button>
           </div>
         </section>`;
     }
@@ -4147,6 +4304,8 @@
           fetchBloodFromAPI(getActiveCity().id);
         } else if (serviceState.page === "medicines" || serviceState.page === "pharmacy") {
           fetchMedicinesFromAPI(getActiveCity().id);
+        } else if (serviceState.page === "ambulances" || serviceState.page === "ambulance-request" || serviceState.page === "ambulance-tracking") {
+          fetchAmbulancesFromAPI(getActiveCity().id);
         }
         render();
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -4164,6 +4323,8 @@
           fetchBloodFromAPI(getActiveCity().id);
         } else if (serviceState.page === "medicines" || serviceState.page === "pharmacy") {
           fetchMedicinesFromAPI(getActiveCity().id);
+        } else if (serviceState.page === "ambulances" || serviceState.page === "ambulance-request" || serviceState.page === "ambulance-tracking") {
+          fetchAmbulancesFromAPI(getActiveCity().id);
         }
         render();
       } else if (target.dataset.action === "change-city") openCityModal();
@@ -4215,6 +4376,31 @@
         serviceState.medicineNearbyOnly = false;
         serviceState.medicineAvailableOnly = false;
         render();
+      }
+      else if (target.dataset.action === "refresh-ambulances") {
+        showToast("Fetching live ambulance fleet status from municipal node...");
+        fetchAmbulancesFromAPI(getActiveCity().id, true);
+      }
+      else if (target.dataset.action === "retry-ambulances") {
+        showToast("Connecting to emergency response fleet API...");
+        fetchAmbulancesFromAPI(getActiveCity().id, true);
+      }
+      else if (target.dataset.action === "refresh-tracking") {
+        const lastDispatch = apiResourceState.ambulances.lastDispatch;
+        if (lastDispatch?.id && window.CareSphereAPI) {
+          showToast("Updating dispatch tracking status...");
+          window.CareSphereAPI.getAmbulanceTracking(lastDispatch.id).then(res => {
+            if (res.success && res.data) {
+              apiResourceState.ambulances.lastDispatch = res.data;
+              render();
+              showToast(`Tracking refreshed: ${res.data.status || "Active"}`);
+            } else {
+              showToast("Unable to refresh tracking at this moment.");
+            }
+          }).catch(() => {
+            showToast("Network error refreshing dispatch tracking.");
+          });
+        }
       }
       else if (target.dataset.action === "clear-hospital-filters") {
         serviceState.hospitalQuery = "";
@@ -4295,27 +4481,61 @@
         event.preventDefault();
         const form = event.target;
         if (!form.reportValidity()) return;
+
+        if (apiResourceState.ambulances.dispatchSubmitting) return;
+
         const values = new FormData(form);
         const reqData = {
-          pickup: String(values.get("pickup") || ""),
-          emergencyType: String(values.get("emergencyType") || ""),
-          destination: String(values.get("destination") || ""),
-          patientName: String(values.get("patientName") || ""),
-          contact: String(values.get("contact") || ""),
-          notes: String(values.get("notes") || "")
+          pickup: String(values.get("pickup") || "").trim(),
+          emergencyType: String(values.get("emergencyType") || "").trim(),
+          destination: String(values.get("destination") || "").trim(),
+          patientName: String(values.get("patientName") || "").trim(),
+          contact: String(values.get("contact") || "").trim(),
+          notes: String(values.get("notes") || "").trim()
         };
-        serviceState.request = reqData;
-        serviceState.page = "ambulance-tracking";
-        render();
-        window.scrollTo({ top: 0, behavior: "smooth" });
 
-        // Synchronize with CareSphere REST API
+        if (!reqData.pickup || !reqData.contact) {
+          apiResourceState.ambulances.dispatchError = "Pickup location and contact phone number are required.";
+          render();
+          return;
+        }
+
+        apiResourceState.ambulances.dispatchSubmitting = true;
+        apiResourceState.ambulances.dispatchError = null;
+        render();
+
         if (window.CareSphereAPI) {
           window.CareSphereAPI.requestAmbulance(reqData).then(res => {
-            if (res.success && res.data?.ambulance) {
-              console.log("[CareSphere API] Dispatched unit:", res.data.ambulance);
+            apiResourceState.ambulances.dispatchSubmitting = false;
+            if (res.success && res.data) {
+              apiResourceState.ambulances.lastDispatch = res.data;
+              serviceState.request = reqData;
+              if (res.data.ambulance?.id) {
+                serviceState.ambulanceId = res.data.ambulance.id;
+              }
+              serviceState.page = "ambulance-tracking";
+              showToast("Emergency ambulance dispatch order transmitted to response fleet!");
+              render();
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            } else if (res.offline) {
+              apiResourceState.ambulances.dispatchError = "Emergency dispatch server offline. Dial 108 or 112 immediately for emergency response.";
+              showToast("Emergency dispatch server offline. Dial 108 or 112 immediately.");
+              render();
+            } else {
+              apiResourceState.ambulances.dispatchError = res.error || "Dispatch order was rejected by emergency triage service.";
+              showToast(`Dispatch failed: ${res.error || "Unknown server error"}`);
+              render();
             }
-          }).catch(() => {});
+          }).catch(err => {
+            apiResourceState.ambulances.dispatchSubmitting = false;
+            apiResourceState.ambulances.dispatchError = err.message || "Failed to communicate with emergency response service.";
+            showToast("Connection to dispatch network failed.");
+            render();
+          });
+        } else {
+          apiResourceState.ambulances.dispatchSubmitting = false;
+          apiResourceState.ambulances.dispatchError = "CareSphere API client not loaded. Dial 108 or 112 immediately.";
+          render();
         }
       } else if (event.target.id === "uploadDocForm") {
         event.preventDefault();
@@ -4445,6 +4665,9 @@
         if (online && apiResourceState.medicines.source !== "api") {
           fetchMedicinesFromAPI(getActiveCity().id);
         }
+        if (online && apiResourceState.ambulances.source !== "api") {
+          fetchAmbulancesFromAPI(getActiveCity().id);
+        }
       });
       document.getElementById("apiStatusBadge")?.addEventListener("click", () => {
         showToast("Checking CareSphere backend connection...");
@@ -4455,6 +4678,7 @@
             fetchDoctorsFromAPI(getActiveCity().id, true);
             fetchBloodFromAPI(getActiveCity().id, true);
             fetchMedicinesFromAPI(getActiveCity().id, true);
+            fetchAmbulancesFromAPI(getActiveCity().id, true);
           } else {
             showToast("CareSphere backend offline. Operating in local baseline mode.");
           }
@@ -4536,6 +4760,8 @@
             fetchBloodFromAPI(getActiveCity().id);
           } else if (serviceState.page === "medicines") {
             fetchMedicinesFromAPI(getActiveCity().id);
+          } else if (serviceState.page === "ambulances") {
+            fetchAmbulancesFromAPI(getActiveCity().id);
           }
         }
       }

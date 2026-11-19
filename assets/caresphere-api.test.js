@@ -542,4 +542,270 @@ describe("CareSphere Frontend API Client", () => {
     assert.equal(res.status, 500);
     assert.equal(res.error, "Medicine inventory service temporary failure");
   });
+
+  /* =================================================================
+   * 6. AMBULANCE SERVICES & EMERGENCY DISPATCH TESTS (PHASE 7)
+   * ================================================================= */
+  test("GET /api/ambulances successfully retrieves and parses ambulance fleet records", async () => {
+    global.fetch = async (url) => {
+      assert.ok(url.includes("/api/ambulances?city=bengaluru"));
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          message: "Retrieved 3 ambulance units in bengaluru.",
+          data: [
+            {
+              id: "KA-01-AB-1234",
+              cityId: "bengaluru",
+              provider: "Karnataka 108 Emergency Network",
+              phone: "+91 80 2200 1080",
+              type: "ADVANCED_LIFE_SUPPORT",
+              distanceKm: 1.8,
+              etaMinutes: 6,
+              status: "AVAILABLE"
+            }
+          ]
+        })
+      };
+    };
+
+    const res = await api.getAmbulances("bengaluru");
+    assert.equal(res.success, true);
+    assert.equal(res.data.length, 1);
+    assert.equal(res.data[0].id, "KA-01-AB-1234");
+    assert.equal(res.data[0].provider, "Karnataka 108 Emergency Network");
+    assert.equal(res.data[0].type, "ADVANCED_LIFE_SUPPORT");
+    assert.equal(res.data[0].distanceKm, 1.8);
+    assert.equal(res.data[0].etaMinutes, 6);
+    assert.equal(res.data[0].status, "AVAILABLE");
+  });
+
+  test("GET /api/ambulances supports city and type filtering", async () => {
+    global.fetch = async (url) => {
+      assert.ok(url.includes("city=bengaluru"));
+      assert.ok(url.includes("type=ADVANCED_LIFE_SUPPORT"));
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          message: "Retrieved 1 ambulance units in bengaluru.",
+          data: [
+            {
+              id: "KA-01-AB-1234",
+              cityId: "bengaluru",
+              provider: "Karnataka 108 Emergency Network",
+              phone: "+91 80 2200 1080",
+              type: "ADVANCED_LIFE_SUPPORT",
+              distanceKm: 1.8,
+              etaMinutes: 6,
+              status: "AVAILABLE"
+            }
+          ]
+        })
+      };
+    };
+
+    const res = await api.getAmbulances("bengaluru", { type: "ADVANCED_LIFE_SUPPORT" });
+    assert.equal(res.success, true);
+    assert.equal(res.data.length, 1);
+    assert.equal(res.data[0].type, "ADVANCED_LIFE_SUPPORT");
+  });
+
+  test("GET /api/ambulances supports availability status filtering", async () => {
+    global.fetch = async (url) => {
+      assert.ok(url.includes("status=AVAILABLE"));
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          message: "Retrieved 1 available ambulance units.",
+          data: [
+            {
+              id: "KA-01-AB-1234",
+              cityId: "bengaluru",
+              provider: "Karnataka 108 Emergency Network",
+              phone: "+91 80 2200 1080",
+              type: "ADVANCED_LIFE_SUPPORT",
+              distanceKm: 1.8,
+              etaMinutes: 6,
+              status: "AVAILABLE"
+            }
+          ]
+        })
+      };
+    };
+
+    const res = await api.getAmbulances("bengaluru", { status: "AVAILABLE" });
+    assert.equal(res.success, true);
+    assert.equal(res.data[0].status, "AVAILABLE");
+  });
+
+  test("GET /api/ambulances handles empty fleet response for unonboarded cities", async () => {
+    global.fetch = async (url) => {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          message: "Retrieved 0 ambulance units in shivamogga.",
+          data: []
+        })
+      };
+    };
+
+    const res = await api.getAmbulances("shivamogga");
+    assert.equal(res.success, true);
+    assert.deepEqual(res.data, []);
+  });
+
+  test("GET /api/ambulances handles backend offline network failure gracefully", async () => {
+    global.fetch = async () => {
+      throw new Error("connect ECONNREFUSED 127.0.0.1:5000");
+    };
+
+    const res = await api.getAmbulances("bengaluru");
+    assert.equal(res.success, false);
+    assert.equal(res.offline, true);
+    assert.ok(res.error.includes("ECONNREFUSED"));
+  });
+
+  test("GET /api/ambulances handles 500 server error cleanly", async () => {
+    global.fetch = async () => {
+      return {
+        ok: false,
+        status: 500,
+        json: async () => ({
+          success: false,
+          error: "Ambulance dispatch fleet registry failure"
+        })
+      };
+    };
+
+    const res = await api.getAmbulances("bengaluru");
+    assert.equal(res.success, false);
+    assert.equal(res.status, 500);
+    assert.equal(res.error, "Ambulance dispatch fleet registry failure");
+  });
+
+  test("POST /api/ambulance-requests successfully submits emergency dispatch request", async () => {
+    let capturedBody = null;
+    let capturedMethod = null;
+
+    global.fetch = async (url, options) => {
+      assert.ok(url.includes("/api/ambulance-requests"));
+      capturedMethod = options.method;
+      capturedBody = JSON.parse(options.body);
+
+      return {
+        ok: true,
+        status: 201,
+        json: async () => ({
+          success: true,
+          message: "Emergency ambulance dispatch order transmitted to response fleet.",
+          data: {
+            id: "disp-1795098988235",
+            patientName: capturedBody.patientName,
+            pickup: capturedBody.pickup,
+            emergencyType: capturedBody.emergencyType,
+            contact: capturedBody.contact,
+            destination: capturedBody.destination,
+            ambulance: {
+              id: "KA-01-AB-1234",
+              provider: "Karnataka 108 Emergency Network",
+              phone: "+91 80 2200 1080",
+              type: "ADVANCED_LIFE_SUPPORT",
+              etaMinutes: 6
+            },
+            status: "DISPATCHED",
+            requestedAt: new Date().toISOString()
+          }
+        })
+      };
+    };
+
+    const dispatchPayload = {
+      pickup: "Indiranagar 100ft Road, Bengaluru",
+      emergencyType: "Cardiac / chest pain",
+      destination: "District General Hospital",
+      patientName: "Rahul Verma",
+      contact: "+91 98450 12345",
+      notes: "Severe chest pressure, conscious"
+    };
+
+    const res = await api.requestAmbulance(dispatchPayload);
+    assert.equal(capturedMethod, "POST");
+    assert.equal(capturedBody.pickup, "Indiranagar 100ft Road, Bengaluru");
+    assert.equal(res.success, true);
+    assert.equal(res.status, 201);
+    assert.equal(res.data.id, "disp-1795098988235");
+    assert.equal(res.data.status, "DISPATCHED");
+    assert.equal(res.data.ambulance.id, "KA-01-AB-1234");
+    assert.equal(res.data.ambulance.etaMinutes, 6);
+  });
+
+  test("POST /api/ambulance-requests handles validation failure (400) for missing required fields", async () => {
+    global.fetch = async () => {
+      return {
+        ok: false,
+        status: 400,
+        json: async () => ({
+          success: false,
+          error: "pickup address and contact phone number are required."
+        })
+      };
+    };
+
+    const res = await api.requestAmbulance({ pickup: "", contact: "" });
+    assert.equal(res.success, false);
+    assert.equal(res.status, 400);
+    assert.equal(res.error, "pickup address and contact phone number are required.");
+  });
+
+  test("POST /api/ambulance-requests handles network offline failure without false confirmation", async () => {
+    global.fetch = async () => {
+      throw new Error("connect ECONNREFUSED 127.0.0.1:5000");
+    };
+
+    const res = await api.requestAmbulance({
+      pickup: "Central Bengaluru",
+      contact: "+91 98450 00000"
+    });
+
+    assert.equal(res.success, false);
+    assert.equal(res.offline, true);
+    assert.ok(res.error.includes("ECONNREFUSED"));
+  });
+
+  test("GET /api/ambulance-requests/:id/tracking retrieves active dispatch tracking status", async () => {
+    global.fetch = async (url) => {
+      assert.ok(url.includes("/api/ambulance-requests/disp-1795098988235/tracking"));
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          message: "Active dispatch tracking status retrieved.",
+          data: {
+            id: "disp-1795098988235",
+            status: "DISPATCHED",
+            ambulance: {
+              id: "KA-01-AB-1234",
+              provider: "Karnataka 108 Emergency Network",
+              etaMinutes: 4
+            }
+          }
+        })
+      };
+    };
+
+    const res = await api.getAmbulanceTracking("disp-1795098988235");
+    assert.equal(res.success, true);
+    assert.equal(res.data.id, "disp-1795098988235");
+    assert.equal(res.data.status, "DISPATCHED");
+    assert.equal(res.data.ambulance.etaMinutes, 4);
+  });
 });

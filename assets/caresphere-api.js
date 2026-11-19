@@ -225,7 +225,8 @@
      * 6. AMBULANCE SERVICES
      * ================================================================= */
     async getAmbulances(city = "bengaluru", params = {}) {
-      const q = new URLSearchParams({ city, ...params }).toString();
+      const queryParams = typeof params === "string" ? { city, type: params } : { city, ...params };
+      const q = new URLSearchParams(queryParams).toString();
       return this.request(`/ambulances?${q}`);
     }
 

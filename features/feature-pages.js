@@ -135,8 +135,9 @@
   function ambulanceCard(ambulance) {
     const amb3d = (window.CareSphere3D && window.CareSphere3D.svg) ? window.CareSphere3D.svg("ambulance", { width: 36, height: 36 }) : "";
     const action = ambulance.status === "Unavailable" ? "" : `<button class="button secondary" type="button" data-ambulance="${escapeHtml(ambulance.id)}">Preview request</button>`;
+    const sourceLabel = ambulance._source === "api" ? "<strong style='color:#059669;'>Live Registry API</strong>" : "Sample baseline";
     return `<article class="resource-card"><div class="card-heading"><div style="display:flex;align-items:center;gap:12px">${amb3d}<div><h2>${escapeHtml(ambulance.type)}</h2><p>${escapeHtml(ambulance.id)}</p></div></div>${statusPill(ambulance.status)}</div>
-      <div class="resource-meta"><span>🛣️ ${ambulance.distance} km · illustrative</span><span>⏱️ Sample ETA ${ambulance.eta} min</span></div><div class="card-actions">${action}</div></article>`;
+      <div class="resource-meta"><span>🛣️ ${ambulance.distance} km</span><span>⏱️ ${ambulance._source === "api" ? "Live ETA" : "Sample ETA"} ${ambulance.eta} min</span><span>📡 ${sourceLabel}</span></div><div class="card-actions">${action}</div></article>`;
   }
 
   function ambulanceForm() {
@@ -445,6 +446,34 @@
               location: m.location || "Central District, Bengaluru",
               distance: typeof m.distanceKm === "number" ? m.distanceKm : (typeof m.distance === "number" ? m.distance : 2.5),
               updated: m.updated || "Live API registry",
+              _source: "api"
+            }));
+            render();
+          }
+        }).catch(() => {});
+      }
+    }).catch(() => {});
+  } else if (window.CareSphereAPI && feature === "ambulances") {
+    window.CareSphereAPI.checkHealth(1500).then(health => {
+      if (health.online) {
+        window.CareSphereAPI.getAmbulances("bengaluru").then(res => {
+          if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+            const typeMap = {
+              "ADVANCED_LIFE_SUPPORT": "Advanced Life Support",
+              "BASIC_LIFE_SUPPORT": "Basic Life Support",
+              "PATIENT_TRANSPORT": "Patient Transport"
+            };
+            const statusMap = {
+              "AVAILABLE": "Available",
+              "LIMITED": "Limited",
+              "UNAVAILABLE": "Unavailable"
+            };
+            demo.ambulances = res.data.map(a => ({
+              id: a.id,
+              type: typeMap[a.type] || a.type || "Basic Life Support",
+              distance: typeof a.distanceKm === "number" ? a.distanceKm : (typeof a.distance === "number" ? a.distance : 2.5),
+              eta: typeof a.etaMinutes === "number" ? a.etaMinutes : (typeof a.eta === "number" ? a.eta : 10),
+              status: statusMap[a.status] || a.status || "Available",
               _source: "api"
             }));
             render();
