@@ -12,11 +12,21 @@ data/
 .vscode/
 .idea/
 
-# Environment and sensitive keys
+# Environment, secrets, and sensitive credentials
 .env
 .env.*
+*.env
 *.local
 backend/.env
+backend/.env.*
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+secrets/
+credentials.json
+*credentials*
 
 # Logs
 *.log
