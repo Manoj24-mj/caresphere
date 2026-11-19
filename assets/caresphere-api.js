@@ -261,10 +261,10 @@
       });
     }
 
-    async uploadMedicalDocument(title, category = "Lab Report") {
+    async uploadMedicalDocument(title, category = "Lab Report", fileSize = "350 KB") {
       return this.request("/medical-records/documents", {
         method: "POST",
-        body: JSON.stringify({ title, category })
+        body: JSON.stringify({ title, category, fileSize })
       });
     }
 

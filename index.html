@@ -1558,6 +1558,12 @@
         dispatchSubmitting: false,
         dispatchError: null,
         lastDispatch: null
+      },
+      records: {
+        loading: false,
+        error: null,
+        source: "baseline",
+        lastFetchTime: null
       }
     };
 
@@ -2024,6 +2030,82 @@
       } catch (e) {
         console.error("Error saving medical records:", e);
       }
+    }
+
+    function normalizeMedicalRecordsFromApi(data) {
+      if (!data) return defaultMedicalRecords;
+      return {
+        profile: {
+          bloodGroup: data.profile?.bloodGroup || "O+",
+          allergies: data.profile?.allergies || "None reported",
+          chronicConditions: data.profile?.chronicConditions || "None reported",
+          emergencyContact: data.profile?.emergencyContact || (data.profile?.emergencyContactName ? `${data.profile.emergencyContactName} · ${data.profile.emergencyContactPhone || ""}` : "Not assigned")
+        },
+        diagnoses: Array.isArray(data.diagnoses) ? data.diagnoses : [],
+        prescriptions: Array.isArray(data.prescriptions) ? data.prescriptions : [],
+        labReports: Array.isArray(data.labReports) ? data.labReports.map(l => ({
+          ...l,
+          metrics: l.metrics || [["Test Metric", l.resultSummary || "Normal", "Normal"]]
+        })) : [],
+        consultations: Array.isArray(data.consultations) ? data.consultations : (defaultMedicalRecords.consultations || []),
+        documents: Array.isArray(data.documents) ? data.documents : [],
+        doctorAccess: data.accessPass ? {
+          code: data.accessPass.code,
+          expiresAt: data.accessPass.expiresAt,
+          active: Boolean(data.accessPass.active)
+        } : (data.doctorAccess || { code: null, expiresAt: null, active: false })
+      };
+    }
+
+    async function fetchMedicalRecordsFromAPI(force = false) {
+      if (!window.CareSphereAPI) return;
+
+      const token = window.CareSphereAPI.getToken();
+      if (!token) {
+        apiResourceState.records.source = "baseline";
+        apiResourceState.records.error = null;
+        return;
+      }
+
+      if (!force && apiResourceState.records.source === "api" && !apiResourceState.records.error) {
+        return;
+      }
+
+      apiResourceState.records.loading = true;
+      apiResourceState.records.error = null;
+      render();
+
+      try {
+        const res = await window.CareSphereAPI.getMyMedicalRecords();
+        apiResourceState.records.loading = false;
+
+        if (res.success && res.data) {
+          const normalized = normalizeMedicalRecordsFromApi(res.data);
+          saveMedicalRecords(normalized);
+          apiResourceState.records.source = "api";
+          apiResourceState.records.lastFetchTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          apiResourceState.records.error = null;
+        } else if (res.status === 401) {
+          apiResourceState.records.source = "baseline";
+          apiResourceState.records.error = "Session expired or authentication required. Please sign in to access your personal health vault.";
+          window.CareSphereAPI.clearSession();
+        } else if (res.status === 403) {
+          apiResourceState.records.source = "baseline";
+          apiResourceState.records.error = "Access denied. Only registered patients and administrators can access this medical vault.";
+        } else if (res.offline) {
+          apiResourceState.records.source = "baseline";
+          apiResourceState.records.error = null;
+        } else {
+          apiResourceState.records.source = "baseline";
+          apiResourceState.records.error = res.error || "Failed to retrieve encrypted medical records from server.";
+        }
+      } catch (err) {
+        apiResourceState.records.loading = false;
+        apiResourceState.records.source = "baseline";
+        apiResourceState.records.error = err.message || "Failed to communicate with medical records vault API.";
+      }
+
+      render();
     }
 
     let serviceState = {
@@ -3009,9 +3091,10 @@
       const isBlood = moduleName === "blood";
       const isMedicine = moduleName === "medicines";
       const isAmbulance = moduleName === "ambulances";
-      const refreshAction = isDoctor ? "refresh-doctors" : isBlood ? "refresh-blood" : isMedicine ? "refresh-medicines" : isAmbulance ? "refresh-ambulances" : "refresh-hospitals";
-      const retryAction = isDoctor ? "retry-doctors" : isBlood ? "retry-blood" : isMedicine ? "retry-medicines" : isAmbulance ? "retry-ambulances" : "retry-hospitals";
-      const entityLabel = isDoctor ? "Clinicians" : isBlood ? "Blood Inventory" : isMedicine ? "Medicine Inventory" : isAmbulance ? "Ambulance Fleet" : "Registry";
+      const isRecords = moduleName === "records";
+      const refreshAction = isDoctor ? "refresh-doctors" : isBlood ? "refresh-blood" : isMedicine ? "refresh-medicines" : isAmbulance ? "refresh-ambulances" : isRecords ? "refresh-records" : "refresh-hospitals";
+      const retryAction = isDoctor ? "retry-doctors" : isBlood ? "retry-blood" : isMedicine ? "retry-medicines" : isAmbulance ? "retry-ambulances" : isRecords ? "retry-records" : "retry-hospitals";
+      const entityLabel = isDoctor ? "Clinicians" : isBlood ? "Blood Inventory" : isMedicine ? "Medicine Inventory" : isAmbulance ? "Ambulance Fleet" : isRecords ? "Health Vault" : "Registry";
 
       if (state.source === "api") {
         return `
@@ -3802,8 +3885,46 @@
       const tab = serviceState.recordsTab || "profile";
       const isPassActive = records.doctorAccess && records.doctorAccess.active;
 
+      if (apiResourceState.records.loading) {
+        return `${sectionHeading("Personal Medical Records Management", "Private-by-default citizen health vault: diagnoses, prescriptions, lab reports and clinician access control.")}${serviceBackLink()}${serviceFreshness("records")}
+          <div class="service-notice" style="display:flex;align-items:center;gap:14px;padding:28px 20px;">
+            <div style="width:22px;height:22px;border:3px solid #CBD5E1;border-top-color:#3B82F6;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+            <div>
+              <h3 style="margin:0 0 4px;font-size:15px;color:#1E293B;">Accessing encrypted health vault...</h3>
+              <p style="margin:0;color:#64748B;font-size:12.5px;">Validating session credentials and retrieving patient health records.</p>
+            </div>
+          </div>`;
+      }
+
+      const errorNotice = apiResourceState.records.error ? `
+        <div class="service-notice error-notice" style="border-left:4px solid #EF4444;background:#FEF2F2;color:#991B1B;padding:12px 16px;margin-bottom:14px;border-radius:10px;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <strong>Health Vault Notice:</strong> ${escapeHtml(apiResourceState.records.error)}
+            <div style="font-size:11.5px;color:#B91C1C;margin-top:2px;">Displaying local baseline sample records. Log in with a verified account to view your private records.</div>
+          </div>
+          <button class="button small" type="button" data-action="retry-records" style="margin-left:12px;">Retry</button>
+        </div>` : "";
+
+      const isLiveVault = apiResourceState.records.source === "api";
+      const vaultTitle = isLiveVault
+        ? `🔒 Authenticated Citizen Health Vault · Live Node Synchronized`
+        : `🔒 Private Client-Side Health Vault · Demonstration Baseline`;
+      const vaultDescription = isLiveVault
+        ? `Your medical records, prescriptions and lab summaries are securely retrieved from your encrypted municipal health vault. Doctors can only view them when you grant an active access pass.`
+        : `Demonstrating local sample health records (Unauthenticated mode). Production records are private by default and require authorized patient login.`;
+
       let tabContent = "";
       if (tab === "profile") {
+        const diagnosesRows = records.diagnoses.length > 0 ? records.diagnoses.map(d => `
+          <tr>
+            <td><strong>${escapeHtml(d.condition)}</strong></td>
+            <td>${escapeHtml(d.diagnosedDate)}</td>
+            <td><span class="med-badge ${d.severity === "Resolved" ? "completed" : "normal"}">${escapeHtml(d.severity)}</span></td>
+            <td>${escapeHtml(d.doctor)}</td>
+            <td>${escapeHtml(d.facility)}</td>
+          </tr>
+        `).join("") : `<tr><td colspan="5" style="text-align:center;color:#64748B;padding:20px;">No chronic conditions or diagnoses recorded in this health vault.</td></tr>`;
+
         tabContent = `
         <div class="med-cards-grid">
           <div class="med-card">
@@ -3812,7 +3933,7 @@
                 <h4 class="med-card-title">Blood Group</h4>
                 <p class="med-card-meta">Recorded on Health ID</p>
               </div>
-              <span class="med-badge normal" style="font-size:16px;font-weight:850;">${records.profile.bloodGroup}</span>
+              <span class="med-badge normal" style="font-size:16px;font-weight:850;">${escapeHtml(records.profile.bloodGroup)}</span>
             </div>
             <p style="margin:0;font-size:13.5px;color:#334155;">Universal Compatibility Status: Can receive matching O donor blood.</p>
           </div>
@@ -3824,7 +3945,7 @@
               </div>
               <span class="med-badge alert">Adverse Alert</span>
             </div>
-            <p style="margin:0;font-size:13.5px;color:#991B1B;font-weight:700;">${records.profile.allergies}</p>
+            <p style="margin:0;font-size:13.5px;color:#991B1B;font-weight:700;">${escapeHtml(records.profile.allergies)}</p>
           </div>
           <div class="med-card">
             <div class="med-card-top">
@@ -3834,7 +3955,7 @@
               </div>
               <span class="med-badge active">Monitored</span>
             </div>
-            <p style="margin:0;font-size:13.5px;color:#0F172A;font-weight:650;">${records.profile.chronicConditions}</p>
+            <p style="margin:0;font-size:13.5px;color:#0F172A;font-weight:650;">${escapeHtml(records.profile.chronicConditions)}</p>
           </div>
           <div class="med-card">
             <div class="med-card-top">
@@ -3844,7 +3965,7 @@
               </div>
               <span class="med-badge normal">Verified</span>
             </div>
-            <p style="margin:0;font-size:13.5px;color:#0F172A;font-weight:650;">${records.profile.emergencyContact}</p>
+            <p style="margin:0;font-size:13.5px;color:#0F172A;font-weight:650;">${escapeHtml(records.profile.emergencyContact)}</p>
           </div>
         </div>
 
@@ -3855,76 +3976,78 @@
               <tr><th>Condition</th><th>Diagnosed Date</th><th>Severity</th><th>Physician</th><th>Facility</th></tr>
             </thead>
             <tbody>
-              ${records.diagnoses.map(d => `
-                <tr>
-                  <td><strong>${d.condition}</strong></td>
-                  <td>${d.diagnosedDate}</td>
-                  <td><span class="med-badge ${d.severity === "Resolved" ? "completed" : "normal"}">${d.severity}</span></td>
-                  <td>${d.doctor}</td>
-                  <td>${d.facility}</td>
-                </tr>
-              `).join("")}
+              ${diagnosesRows}
             </tbody>
           </table>
         </section>`;
       } else if (tab === "prescriptions") {
-        tabContent = `
-        <div class="med-cards-grid">
-          ${records.prescriptions.map(p => `
-            <div class="med-card">
-              <div class="med-card-top">
-                <div>
-                  <h4 class="med-card-title">${p.medication}</h4>
-                  <p class="med-card-meta">${p.form} · Prescribed: ${p.date}</p>
-                </div>
-                <span class="med-badge ${p.status === "Active" ? "active" : "completed"}">${p.status}</span>
+        const presCards = records.prescriptions.length > 0 ? records.prescriptions.map(p => `
+          <div class="med-card">
+            <div class="med-card-top">
+              <div>
+                <h4 class="med-card-title">${escapeHtml(p.medication)}</h4>
+                <p class="med-card-meta">${escapeHtml(p.form)} · Prescribed: ${escapeHtml(p.date)}</p>
               </div>
-              <div class="med-instructions"><strong>Dosage Schedule:</strong> ${p.dosage}</div>
-              <p style="margin:0;font-size:12.5px;color:#475569;">Prescribed by: <strong>${p.doctor}</strong> · ${p.facility}</p>
-              <div class="service-actions" style="margin-top:8px;">
-                <button class="button small" type="button" data-service-route="medicines" data-medicine-query="${escapeHtml(p.medication.split(' ')[0])}">Check Pharmacy Availability</button>
-              </div>
+              <span class="med-badge ${p.status === "Active" ? "active" : "completed"}">${escapeHtml(p.status)}</span>
             </div>
-          `).join("")}
-        </div>`;
+            <div class="med-instructions"><strong>Dosage Schedule:</strong> ${escapeHtml(p.dosage)}</div>
+            <p style="margin:0;font-size:12.5px;color:#475569;">Prescribed by: <strong>${escapeHtml(p.doctor)}</strong> · ${escapeHtml(p.facility)}</p>
+            <div class="service-actions" style="margin-top:8px;">
+              <button class="button small" type="button" data-service-route="medicines" data-medicine-query="${escapeHtml(p.medication.split(' ')[0])}">Check Pharmacy Availability</button>
+            </div>
+          </div>
+        `).join("") : `<div class="service-notice" style="text-align:center;padding:28px 16px;"><h4 style="margin:0 0 6px;color:#1E293B;">No active prescriptions recorded</h4><p style="margin:0;font-size:13px;color:#64748B;">When authorized clinicians issue e-prescriptions, they will appear here securely.</p></div>`;
+
+        tabContent = `<div class="med-cards-grid">${presCards}</div>`;
       } else if (tab === "labs") {
-        tabContent = `
-        <div class="med-cards-grid">
-          ${records.labReports.map(l => `
-            <div class="med-card">
-              <div class="med-card-top">
-                <div>
-                  <h4 class="med-card-title">${l.title}</h4>
-                  <p class="med-card-meta">${l.lab} · Date: ${l.date}</p>
-                </div>
-                <span class="med-badge normal">${l.badge}</span>
+        const labCards = records.labReports.length > 0 ? records.labReports.map(l => `
+          <div class="med-card">
+            <div class="med-card-top">
+              <div>
+                <h4 class="med-card-title">${escapeHtml(l.title)}</h4>
+                <p class="med-card-meta">${escapeHtml(l.lab)} · Date: ${escapeHtml(l.date)}</p>
               </div>
-              <div class="med-instructions"><strong>Summary Metrics:</strong> ${l.resultSummary}</div>
-              <div class="service-actions" style="margin-top:10px;">
-                <button class="button small" type="button" data-action="view-report" data-report-id="${l.id}">View Verified Report</button>
-              </div>
+              <span class="med-badge normal">${escapeHtml(l.badge)}</span>
             </div>
-          `).join("")}
-        </div>`;
+            <div class="med-instructions"><strong>Summary Metrics:</strong> ${escapeHtml(l.resultSummary)}</div>
+            <div class="service-actions" style="margin-top:10px;">
+              <button class="button small" type="button" data-action="view-report" data-report-id="${escapeHtml(l.id)}">View Verified Report</button>
+            </div>
+          </div>
+        `).join("") : `<div class="service-notice" style="text-align:center;padding:28px 16px;"><h4 style="margin:0 0 6px;color:#1E293B;">No lab reports on file</h4><p style="margin:0;font-size:13px;color:#64748B;">Diagnostic lab reports verified by municipal diagnostics will appear here.</p></div>`;
+
+        tabContent = `<div class="med-cards-grid">${labCards}</div>`;
       } else if (tab === "consultations") {
+        const consultTimeline = records.consultations.length > 0 ? `
+          <div class="med-timeline" style="margin-bottom:24px;">
+            ${records.consultations.map(c => `
+              <div class="med-timeline-item">
+                <div class="med-timeline-date">${escapeHtml(c.date)}</div>
+                <div class="med-timeline-body">
+                  <h4>${escapeHtml(c.doctor)} · ${escapeHtml(c.specialty)}</h4>
+                  <p><strong>Facility:</strong> ${escapeHtml(c.facility)} &nbsp;·&nbsp; <strong>Reason:</strong> ${escapeHtml(c.reason)}</p>
+                  <div class="med-instructions"><strong>Clinical Outcome / Plan:</strong> ${escapeHtml(c.outcome)}</div>
+                </div>
+              </div>
+            `).join("")}
+          </div>` : `<p style="color:#64748B;font-size:13px;margin:0 0 16px;">No consultation history on file.</p>`;
+
+        const docRows = records.documents.length > 0 ? records.documents.map(doc => `
+          <tr>
+            <td><strong>📄 ${escapeHtml(doc.name)}</strong></td>
+            <td>${escapeHtml(doc.category)}</td>
+            <td>${escapeHtml(doc.date)}</td>
+            <td>${escapeHtml(doc.size)}</td>
+            <td><span class="med-badge normal">${escapeHtml(doc.access)}</span></td>
+          </tr>
+        `).join("") : `<tr><td colspan="5" style="text-align:center;color:#64748B;padding:20px;">No medical documents registered yet. Click "＋ Upload Medical Document" above to register reports.</td></tr>`;
+
         tabContent = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
           <h3 style="margin:0;font-size:18px;">Clinical Consultation Records &amp; Uploaded Documents</h3>
           <button class="button small" type="button" data-action="upload-doc-modal">＋ Upload Medical Document</button>
         </div>
-        <div class="med-timeline" style="margin-bottom:24px;">
-          ${records.consultations.map(c => `
-            <div class="med-timeline-item">
-              <div class="med-timeline-date">${c.date}</div>
-              <div class="med-timeline-body">
-                <h4>${c.doctor} · ${c.specialty}</h4>
-                <p><strong>Facility:</strong> ${c.facility} &nbsp;·&nbsp; <strong>Reason:</strong> ${c.reason}</p>
-                <div class="med-instructions"><strong>Clinical Outcome / Plan:</strong> ${c.outcome}</div>
-              </div>
-            </div>
-          `).join("")}
-        </div>
-
+        ${consultTimeline}
         <section class="detail-panel">
           <h3>Uploaded Health Documents &amp; Certificates</h3>
           <table class="med-docs-table" style="margin-top:12px;">
@@ -3932,26 +4055,18 @@
               <tr><th>Document Name</th><th>Category</th><th>Upload Date</th><th>File Size</th><th>Access State</th></tr>
             </thead>
             <tbody>
-              ${records.documents.map(doc => `
-                <tr>
-                  <td><strong>📄 ${doc.name}</strong></td>
-                  <td>${doc.category}</td>
-                  <td>${doc.date}</td>
-                  <td>${doc.size}</td>
-                  <td><span class="med-badge normal">${doc.access}</span></td>
-                </tr>
-              `).join("")}
+              ${docRows}
             </tbody>
           </table>
         </section>`;
       }
 
-      return `${sectionHeading("Personal Medical Records Management", "Private-by-default citizen health vault: diagnoses, prescriptions, lab reports and clinician access control.")}${serviceBackLink()}
+      return `${sectionHeading("Personal Medical Records Management", "Private-by-default citizen health vault: diagnoses, prescriptions, lab reports and clinician access control.")}${serviceBackLink()}${serviceFreshness("records")}${errorNotice}
         <div class="med-records-shell">
           <div class="med-privacy-banner">
             <div class="med-privacy-info">
-              <h3>🔒 Private by Default · End-to-End Client-Side Privacy</h3>
-              <p>Your health records and prescriptions are securely stored in your personal vault. Doctors can only view them when you generate an explicit temporary access pass.</p>
+              <h3>${vaultTitle}</h3>
+              <p>${vaultDescription}</p>
             </div>
             <div>
               ${isPassActive ? `
@@ -4306,6 +4421,8 @@
           fetchMedicinesFromAPI(getActiveCity().id);
         } else if (serviceState.page === "ambulances" || serviceState.page === "ambulance-request" || serviceState.page === "ambulance-tracking") {
           fetchAmbulancesFromAPI(getActiveCity().id);
+        } else if (serviceState.page === "records") {
+          fetchMedicalRecordsFromAPI();
         }
         render();
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -4325,6 +4442,8 @@
           fetchMedicinesFromAPI(getActiveCity().id);
         } else if (serviceState.page === "ambulances" || serviceState.page === "ambulance-request" || serviceState.page === "ambulance-tracking") {
           fetchAmbulancesFromAPI(getActiveCity().id);
+        } else if (serviceState.page === "records") {
+          fetchMedicalRecordsFromAPI();
         }
         render();
       } else if (target.dataset.action === "change-city") openCityModal();
@@ -4424,18 +4543,54 @@
       else if (target.dataset.action === "sim-blood") openModal("sim-blood", { facility: target.dataset.facility, group: target.dataset.group });
       else if (target.dataset.action === "sim-meds") openModal("sim-meds", { medicineId: target.dataset.medicine });
       else if (target.dataset.action === "grant-doctor-access") {
-        const records = getMedicalRecords();
-        const code = `CS-${Math.floor(100000 + Math.random() * 900000)}`;
-        records.doctorAccess = { code, expiresAt: Date.now() + 15 * 60 * 1000, active: true };
-        saveMedicalRecords(records);
-        render();
-        showToast(`Temporary clinician access pass generated: ${code}`);
+        if (window.CareSphereAPI && window.CareSphereAPI.getToken()) {
+          showToast("Generating secure clinician access pass on CareSphere node...");
+          window.CareSphereAPI.generateDoctorAccessPass().then(res => {
+            if (res.success && res.data) {
+              const records = getMedicalRecords();
+              records.doctorAccess = { code: res.data.passCode, expiresAt: res.data.expiresAt, active: true };
+              saveMedicalRecords(records);
+              render();
+              showToast(`Temporary clinician access pass generated: ${res.data.passCode} (Valid 15m)`);
+            } else {
+              const records = getMedicalRecords();
+              const code = `CS-${Math.floor(100000 + Math.random() * 900000)}`;
+              records.doctorAccess = { code, expiresAt: Date.now() + 15 * 60 * 1000, active: true };
+              saveMedicalRecords(records);
+              render();
+              showToast(`Temporary clinician access pass generated: ${code}`);
+            }
+          }).catch(() => {
+            const records = getMedicalRecords();
+            const code = `CS-${Math.floor(100000 + Math.random() * 900000)}`;
+            records.doctorAccess = { code, expiresAt: Date.now() + 15 * 60 * 1000, active: true };
+            saveMedicalRecords(records);
+            render();
+            showToast(`Temporary clinician access pass generated: ${code}`);
+          });
+        } else {
+          const records = getMedicalRecords();
+          const code = `CS-${Math.floor(100000 + Math.random() * 900000)}`;
+          records.doctorAccess = { code, expiresAt: Date.now() + 15 * 60 * 1000, active: true };
+          saveMedicalRecords(records);
+          render();
+          showToast(`Temporary clinician access pass generated: ${code}`);
+        }
       } else if (target.dataset.action === "revoke-doctor-access") {
+        if (window.CareSphereAPI && window.CareSphereAPI.getToken()) {
+          window.CareSphereAPI.revokeDoctorAccessPass().catch(() => {});
+        }
         const records = getMedicalRecords();
         records.doctorAccess = { code: null, expiresAt: null, active: false };
         saveMedicalRecords(records);
         render();
         showToast("Doctor access pass revoked. Vault secured.");
+      } else if (target.dataset.action === "refresh-records") {
+        showToast("Fetching encrypted health vault from municipal node...");
+        fetchMedicalRecordsFromAPI(true);
+      } else if (target.dataset.action === "retry-records") {
+        showToast("Connecting to CareSphere health vault API...");
+        fetchMedicalRecordsFromAPI(true);
       } else if (target.dataset.action === "close") document.getElementById("overlays").innerHTML = "";
       else if (target.dataset.action === "confirm-booking") { document.getElementById("overlays").innerHTML = ""; showToast("Appointment consultation request saved in system."); }
       else if (target.dataset.action === "confirm-emergency") { document.getElementById("overlays").innerHTML = ""; showToast("Emergency alert transmitted to hospital triage network."); }
@@ -4541,18 +4696,28 @@
         event.preventDefault();
         const form = event.target;
         const values = new FormData(form);
-        const title = String(values.get("docTitle") || "Uploaded_Report.pdf");
-        const category = String(values.get("docCategory") || "Lab Report");
+        const title = String(values.get("docTitle") || "Uploaded_Report.pdf").trim();
+        const category = String(values.get("docCategory") || "Lab Report").trim();
+        const fileInput = form.querySelector('input[type="file"]');
+        const file = fileInput?.files?.[0];
+        const fileSize = file ? (file.size > 1024 * 1024 ? (file.size / (1024 * 1024)).toFixed(1) + " MB" : Math.max(1, Math.round(file.size / 1024)) + " KB") : "350 KB";
+
         const records = getMedicalRecords();
-        records.documents.unshift({ id: `doc-${Date.now()}`, name: title, category: category, date: "Today", size: "350 KB", access: "Protected" });
+        const newDoc = { id: `doc-${Date.now()}`, name: title, category: category, date: "Today", size: fileSize, access: "Protected" };
+        records.documents.unshift(newDoc);
         saveMedicalRecords(records);
         document.getElementById("overlays").innerHTML = "";
         render();
         showToast(`Document "${title}" saved to encrypted health vault.`);
 
         // Synchronize with CareSphere REST API
-        if (window.CareSphereAPI) {
-          window.CareSphereAPI.uploadMedicalDocument(title, category).catch(() => {});
+        if (window.CareSphereAPI && window.CareSphereAPI.getToken()) {
+          window.CareSphereAPI.uploadMedicalDocument(title, category, fileSize).then(res => {
+            if (res.success && res.data) {
+              newDoc.id = res.data.id;
+              saveMedicalRecords(records);
+            }
+          }).catch(() => {});
         }
       } else if (event.target.id === "simBedsForm") {
         event.preventDefault();
@@ -4668,6 +4833,9 @@
         if (online && apiResourceState.ambulances.source !== "api") {
           fetchAmbulancesFromAPI(getActiveCity().id);
         }
+        if (online && apiResourceState.records.source !== "api") {
+          fetchMedicalRecordsFromAPI();
+        }
       });
       document.getElementById("apiStatusBadge")?.addEventListener("click", () => {
         showToast("Checking CareSphere backend connection...");
@@ -4679,6 +4847,7 @@
             fetchBloodFromAPI(getActiveCity().id, true);
             fetchMedicinesFromAPI(getActiveCity().id, true);
             fetchAmbulancesFromAPI(getActiveCity().id, true);
+            fetchMedicalRecordsFromAPI(true);
           } else {
             showToast("CareSphere backend offline. Operating in local baseline mode.");
           }
@@ -4762,6 +4931,8 @@
             fetchMedicinesFromAPI(getActiveCity().id);
           } else if (serviceState.page === "ambulances") {
             fetchAmbulancesFromAPI(getActiveCity().id);
+          } else if (serviceState.page === "records") {
+            fetchMedicalRecordsFromAPI();
           }
         }
       }

@@ -808,4 +808,338 @@ describe("CareSphere Frontend API Client", () => {
     assert.equal(res.data.status, "DISPATCHED");
     assert.equal(res.data.ambulance.etaMinutes, 4);
   });
+
+  /* =================================================================
+   * 7. MEDICAL RECORDS MANAGEMENT TESTS (PHASE 8)
+   * ================================================================= */
+  test("GET /api/medical-records/me successfully retrieves authenticated health vault with bearer token", async () => {
+    let capturedUrl = "";
+    let capturedHeaders = {};
+
+    api.setToken("pat-vault-token-xyz");
+
+    global.fetch = async (url, options) => {
+      capturedUrl = url;
+      capturedHeaders = options.headers || {};
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          message: "Patient health record vault retrieved.",
+          data: {
+            profile: {
+              bloodGroup: "O+",
+              allergies: ["Penicillin", "Sulfa Drugs"],
+              chronicConditions: ["Hypertension (Stage 1)"],
+              emergencyContactName: "Anita Sharma",
+              emergencyContactPhone: "+91 98450 12345"
+            },
+            diagnoses: [
+              {
+                id: "diag-1",
+                condition: "Essential (primary) hypertension",
+                diagnosedDate: "15 Jan 2026",
+                severity: "Mild",
+                doctor: "Dr. Priya Nair",
+                facility: "Victoria Hospital"
+              }
+            ],
+            prescriptions: [
+              {
+                id: "rx-1",
+                date: "15 Jan 2026",
+                medication: "Telmisartan",
+                form: "Tablet",
+                dosage: "40 mg once daily",
+                doctor: "Dr. Priya Nair",
+                facility: "Victoria Hospital",
+                status: "ACTIVE"
+              }
+            ],
+            labReports: [
+              {
+                id: "lab-1",
+                date: "12 Jan 2026",
+                title: "Comprehensive Metabolic Panel (CMP)",
+                lab: "Victoria Central Diagnostic Lab",
+                resultSummary: "Blood urea & creatinine normal. eGFR > 90.",
+                badge: "Normal"
+              }
+            ],
+            documents: [
+              {
+                id: "doc-1",
+                name: "ECG Baseline Tracing.pdf",
+                category: "Diagnostic Scan",
+                date: "10 Jan 2026",
+                size: "1.2 MB",
+                access: "Encrypted"
+              }
+            ],
+            accessPass: {
+              code: "729401",
+              expiresAt: new Date(Date.now() + 15 * 60000).toISOString(),
+              active: true
+            }
+          }
+        })
+      };
+    };
+
+    const res = await api.getMyMedicalRecords();
+    assert.ok(capturedUrl.includes("/api/medical-records/me"));
+    assert.equal(capturedHeaders["Authorization"], "Bearer pat-vault-token-xyz");
+    assert.equal(res.success, true);
+    assert.equal(res.status, 200);
+    assert.equal(res.data.profile.bloodGroup, "O+");
+    assert.equal(res.data.diagnoses.length, 1);
+    assert.equal(res.data.diagnoses[0].condition, "Essential (primary) hypertension");
+    assert.equal(res.data.prescriptions.length, 1);
+    assert.equal(res.data.prescriptions[0].medication, "Telmisartan");
+    assert.equal(res.data.labReports.length, 1);
+    assert.equal(res.data.documents.length, 1);
+    assert.equal(res.data.documents[0].name, "ECG Baseline Tracing.pdf");
+    assert.ok(res.data.accessPass.active);
+  });
+
+  test("GET /api/medical-records/me handles empty medical records for new patient user", async () => {
+    api.setToken("pat-empty-user-token");
+
+    global.fetch = async () => {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          message: "Patient health record vault retrieved.",
+          data: {
+            profile: {
+              bloodGroup: "Unknown",
+              allergies: [],
+              chronicConditions: [],
+              emergencyContactName: "Not specified",
+              emergencyContactPhone: "Not specified"
+            },
+            diagnoses: [],
+            prescriptions: [],
+            labReports: [],
+            documents: [],
+            accessPass: null
+          }
+        })
+      };
+    };
+
+    const res = await api.getMyMedicalRecords();
+    assert.equal(res.success, true);
+    assert.equal(res.data.diagnoses.length, 0);
+    assert.equal(res.data.prescriptions.length, 0);
+    assert.equal(res.data.labReports.length, 0);
+    assert.equal(res.data.documents.length, 0);
+    assert.equal(res.data.accessPass, null);
+  });
+
+  test("GET /api/medical-records/me handles 401 Unauthorized when auth token is missing or invalid", async () => {
+    api.clearSession();
+
+    global.fetch = async () => {
+      return {
+        ok: false,
+        status: 401,
+        json: async () => ({
+          success: false,
+          error: "Authorization token required. Please sign in to view your health records."
+        })
+      };
+    };
+
+    const res = await api.getMyMedicalRecords();
+    assert.equal(res.success, false);
+    assert.equal(res.status, 401);
+    assert.ok(res.error.includes("Authorization token required"));
+  });
+
+  test("GET /api/medical-records/me handles 403 Forbidden when user role is not authorized", async () => {
+    api.setToken("guest-token");
+
+    global.fetch = async () => {
+      return {
+        ok: false,
+        status: 403,
+        json: async () => ({
+          success: false,
+          error: "Access forbidden. Role 'GUEST' is not authorized to access health records vault."
+        })
+      };
+    };
+
+    const res = await api.getMyMedicalRecords();
+    assert.equal(res.success, false);
+    assert.equal(res.status, 403);
+    assert.ok(res.error.includes("Access forbidden"));
+  });
+
+  test("GET /api/medical-records/me handles offline network connection error gracefully", async () => {
+    api.setToken("pat-vault-token-xyz");
+
+    global.fetch = async () => {
+      throw new Error("connect ECONNREFUSED 127.0.0.1:5000");
+    };
+
+    const res = await api.getMyMedicalRecords();
+    assert.equal(res.success, false);
+    assert.equal(res.offline, true);
+    assert.ok(res.error.includes("ECONNREFUSED"));
+  });
+
+  test("GET /api/medical-records/me handles 500 internal server error cleanly", async () => {
+    api.setToken("pat-vault-token-xyz");
+
+    global.fetch = async () => {
+      return {
+        ok: false,
+        status: 500,
+        json: async () => ({
+          success: false,
+          error: "Internal medical records vault decryption failure."
+        })
+      };
+    };
+
+    const res = await api.getMyMedicalRecords();
+    assert.equal(res.success, false);
+    assert.equal(res.status, 500);
+    assert.ok(res.error.includes("vault decryption failure"));
+  });
+
+  test("POST /api/medical-records/documents registers document metadata with title, category, and fileSize", async () => {
+    api.setToken("pat-vault-token-xyz");
+    let capturedMethod = "";
+    let capturedBody = null;
+
+    global.fetch = async (url, options) => {
+      assert.ok(url.includes("/api/medical-records/documents"));
+      capturedMethod = options.method;
+      capturedBody = JSON.parse(options.body);
+
+      return {
+        ok: true,
+        status: 201,
+        json: async () => ({
+          success: true,
+          message: "Medical document metadata registered successfully.",
+          data: {
+            id: "doc-1795123456789",
+            name: capturedBody.title,
+            category: capturedBody.category,
+            date: "19 Nov 2026",
+            size: capturedBody.fileSize,
+            access: "Encrypted"
+          }
+        })
+      };
+    };
+
+    const res = await api.uploadMedicalDocument("Blood Report Nov 2026.pdf", "Lab Report", "420 KB");
+    assert.equal(capturedMethod, "POST");
+    assert.equal(capturedBody.title, "Blood Report Nov 2026.pdf");
+    assert.equal(capturedBody.category, "Lab Report");
+    assert.equal(capturedBody.fileSize, "420 KB");
+    assert.equal(res.success, true);
+    assert.equal(res.status, 201);
+    assert.equal(res.data.name, "Blood Report Nov 2026.pdf");
+    assert.equal(res.data.category, "Lab Report");
+    assert.equal(res.data.size, "420 KB");
+  });
+
+  test("POST /api/medical-records/documents handles validation failure (400) when title is missing", async () => {
+    api.setToken("pat-vault-token-xyz");
+
+    global.fetch = async () => {
+      return {
+        ok: false,
+        status: 400,
+        json: async () => ({
+          success: false,
+          error: "Document title is required."
+        })
+      };
+    };
+
+    const res = await api.uploadMedicalDocument("", "Lab Report");
+    assert.equal(res.success, false);
+    assert.equal(res.status, 400);
+    assert.equal(res.error, "Document title is required.");
+  });
+
+  test("POST /api/medical-records/access-pass/generate generates temporary doctor access pass", async () => {
+    api.setToken("pat-vault-token-xyz");
+    let capturedMethod = "";
+
+    global.fetch = async (url, options) => {
+      assert.ok(url.includes("/api/medical-records/access-pass/generate"));
+      capturedMethod = options.method;
+
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          message: "Temporary doctor access pass generated (valid 15 minutes).",
+          data: {
+            passCode: "839201",
+            expiresAt: new Date(Date.now() + 15 * 60000).toISOString(),
+            durationMinutes: 15
+          }
+        })
+      };
+    };
+
+    const res = await api.generateDoctorAccessPass();
+    assert.equal(capturedMethod, "POST");
+    assert.equal(res.success, true);
+    assert.equal(res.status, 200);
+    assert.equal(res.data.passCode, "839201");
+    assert.equal(res.data.durationMinutes, 15);
+  });
+
+  test("POST /api/medical-records/access-pass/revoke revokes active doctor access pass", async () => {
+    api.setToken("pat-vault-token-xyz");
+    let capturedMethod = "";
+    let capturedBody = null;
+
+    global.fetch = async (url, options) => {
+      assert.ok(url.includes("/api/medical-records/access-pass/revoke"));
+      capturedMethod = options.method;
+      capturedBody = JSON.parse(options.body);
+
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          message: "Doctor access pass revoked successfully.",
+          data: {
+            accessPass: null
+          }
+        })
+      };
+    };
+
+    const res = await api.revokeDoctorAccessPass("839201");
+    assert.equal(capturedMethod, "POST");
+    assert.equal(capturedBody.passId, "839201");
+    assert.equal(res.success, true);
+    assert.equal(res.status, 200);
+    assert.equal(res.data.accessPass, null);
+  });
+
+  test("Session storage clearSession() wipes authentication token preventing unauthorized access or leakage", () => {
+    api.setToken("test-bearer-token-vault-999");
+    assert.equal(api.getToken(), "test-bearer-token-vault-999");
+
+    api.clearSession();
+    assert.equal(api.getToken(), null);
+  });
 });

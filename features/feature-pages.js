@@ -481,6 +481,19 @@
         }).catch(() => {});
       }
     }).catch(() => {});
+  } else if (window.CareSphereAPI && feature === "records") {
+    if (window.CareSphereAPI.getToken()) {
+      window.CareSphereAPI.checkHealth(1500).then(health => {
+        if (health.online) {
+          window.CareSphereAPI.getMyMedicalRecords().then(res => {
+            if (res.success && res.data) {
+              demo.medicalRecords = res.data;
+              render();
+            }
+          }).catch(() => {});
+        }
+      }).catch(() => {});
+    }
   }
 
   render();
