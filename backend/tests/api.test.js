@@ -161,3 +161,58 @@ test("AUTH & PRIVATE VAULT: Full patient registration, authentication, and vault
   });
   assert.equal(bedRes.status, 403, "Patient role must be forbidden from updating bed inventory");
 });
+
+test("EMERGENCY DISPATCH: Submits ambulance dispatch request", async () => {
+  const res = await fetch(`${baseUrl}/api/ambulance-requests`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      pickup: "MG Road Metro Station, Bengaluru",
+      emergencyType: "Cardiac emergency",
+      contact: "+91 98450 11223",
+      patientName: "Emergency Test Citizen",
+      destination: "District General Hospital"
+    })
+  });
+  assert.equal(res.status, 201);
+  const json = await res.json();
+  assert.equal(json.success, true);
+  assert.ok(json.data.id);
+  assert.equal(json.data.status, "DISPATCHED");
+  assert.ok(json.data.ambulance);
+});
+
+test("STAFF RBAC & INVENTORY: Hospital admin can update bed availability", async () => {
+  // Register hospital staff
+  const staffMobile = `+91 98888 ${Math.floor(10000 + Math.random() * 90000)}`;
+  const staffReg = await fetch(`${baseUrl}/api/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      fullName: "Dr. Ramesh Staff Admin",
+      mobile: staffMobile,
+      password: "HospitalStaffPassword123!",
+      address: "District General Hospital Campus, Bengaluru",
+      role: "HOSPITAL_ADMIN",
+      cityId: "bengaluru"
+    })
+  });
+  assert.equal(staffReg.status, 201);
+  const staffToken = (await staffReg.json()).data.token;
+
+  const updateRes = await fetch(`${baseUrl}/api/beds/update`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${staffToken}`
+    },
+    body: JSON.stringify({
+      hospitalId: "district-general",
+      beds: { General: [25, 50], ICU: [5, 12] }
+    })
+  });
+  assert.equal(updateRes.status, 200);
+  const updateJson = await updateRes.json();
+  assert.equal(updateJson.success, true);
+  assert.equal(updateJson.data.beds.General[0], 25);
+});

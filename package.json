@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "CareSphere - AI-Powered, City-Based Integrated Government Healthcare Resource Management and Assistance Platform",
   "scripts": {
-    "test": "node --test assets/predictai-core.test.js",
+    "test": "node --test assets/*.test.js",
     "test:backend": "cd backend && npm test",
-    "test:all": "node --test assets/predictai-core.test.js && cd backend && npm test",
+    "test:all": "node --test assets/*.test.js && cd backend && npm test",
     "start:backend": "cd backend && npm start"
   },
   "keywords": [

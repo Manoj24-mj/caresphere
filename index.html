@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="assets/caresphere-guide.css">
   <script src="assets/caresphere-3d.js"></script>
   <script src="assets/caresphere-guide.js"></script>
+  <script src="assets/caresphere-api.js"></script>
   <script src="assets/predictai-core.js"></script>
   <script src="assets/predictai.js"></script>
   <script src="assets/localization.js" defer></script>
@@ -1131,6 +1132,10 @@
           <span aria-hidden="true">📍</span>
           <span id="currentCityLabel">Bengaluru, KA</span>
           <span class="city-chevron" aria-hidden="true">▾</span>
+        </div>
+        <div id="apiStatusBadge" class="api-status-badge" role="button" tabindex="0" title="CareSphere REST API status (Click to refresh)" style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:650;padding:5px 10px;border-radius:10px;background:#F8FAFC;border:1px solid #E2E8F0;color:#64748B;cursor:pointer;transition:all 0.15s ease;">
+          <span id="apiStatusDot" style="width:7px;height:7px;border-radius:50%;background:#94A3B8;display:inline-block;"></span>
+          <span id="apiStatusText">Checking API...</span>
         </div>
         <div class="top-spacer"></div>
         <label class="role-switch"><span>Viewing as</span><select id="roleSelect" aria-label="Switch role">
@@ -3673,10 +3678,27 @@
         const form = event.target;
         if (!form.reportValidity()) return;
         const values = new FormData(form);
-        serviceState.request = { pickup: String(values.get("pickup") || ""), emergencyType: String(values.get("emergencyType") || ""), destination: String(values.get("destination") || ""), patientName: String(values.get("patientName") || ""), contact: String(values.get("contact") || ""), notes: String(values.get("notes") || "") };
+        const reqData = {
+          pickup: String(values.get("pickup") || ""),
+          emergencyType: String(values.get("emergencyType") || ""),
+          destination: String(values.get("destination") || ""),
+          patientName: String(values.get("patientName") || ""),
+          contact: String(values.get("contact") || ""),
+          notes: String(values.get("notes") || "")
+        };
+        serviceState.request = reqData;
         serviceState.page = "ambulance-tracking";
         render();
         window.scrollTo({ top: 0, behavior: "smooth" });
+
+        // Synchronize with CareSphere REST API
+        if (window.CareSphereAPI) {
+          window.CareSphereAPI.requestAmbulance(reqData).then(res => {
+            if (res.success && res.data?.ambulance) {
+              console.log("[CareSphere API] Dispatched unit:", res.data.ambulance);
+            }
+          }).catch(() => {});
+        }
       } else if (event.target.id === "uploadDocForm") {
         event.preventDefault();
         const form = event.target;
@@ -3689,50 +3711,122 @@
         document.getElementById("overlays").innerHTML = "";
         render();
         showToast(`Document "${title}" saved to encrypted health vault.`);
+
+        // Synchronize with CareSphere REST API
+        if (window.CareSphereAPI) {
+          window.CareSphereAPI.uploadMedicalDocument(title, category).catch(() => {});
+        }
       } else if (event.target.id === "simBedsForm") {
         event.preventDefault();
         const form = event.target;
         const hospId = form.dataset.hospitalId;
         const hosp = serviceHospitals.find(h => h.id === hospId);
+        const values = new FormData(form);
+        const genAvail = Number(values.get("genAvail") || 0);
+        const icuAvail = Number(values.get("icuAvail") || 0);
+        const emgAvail = Number(values.get("emgAvail") || 0);
         if (hosp) {
-          const values = new FormData(form);
-          hosp.beds.General[0] = Number(values.get("genAvail") || 0);
-          hosp.beds.ICU[0] = Number(values.get("icuAvail") || 0);
-          hosp.beds.Emergency[0] = Number(values.get("emgAvail") || 0);
+          hosp.beds.General[0] = genAvail;
+          hosp.beds.ICU[0] = icuAvail;
+          hosp.beds.Emergency[0] = emgAvail;
           hosp.updated = "Just now (Staff verified)";
         }
         document.getElementById("overlays").innerHTML = "";
         render();
         showToast("Hospital bed availability synchronized live across the city grid.");
+
+        // Synchronize with CareSphere REST API
+        if (window.CareSphereAPI) {
+          window.CareSphereAPI.updateBeds(hospId, {
+            General: [genAvail, hosp?.beds?.General?.[1] || 50],
+            ICU: [icuAvail, hosp?.beds?.ICU?.[1] || 12],
+            Emergency: [emgAvail, hosp?.beds?.Emergency?.[1] || 6]
+          }).catch(() => {});
+        }
       } else if (event.target.id === "simBloodForm") {
         event.preventDefault();
         const form = event.target;
         const group = form.dataset.group;
         const values = new FormData(form);
+        const units = Number(values.get("bloodUnits") || 0);
         const item = bloodAvailability.find(b => b.group === group);
         if (item) {
-          item.units = Number(values.get("bloodUnits") || 0);
+          item.units = units;
           item.updated = "Just now (Verified)";
         }
         document.getElementById("overlays").innerHTML = "";
         render();
         showToast(`Blood bank stock for group ${group} updated.`);
+
+        // Synchronize with CareSphere REST API
+        if (window.CareSphereAPI) {
+          window.CareSphereAPI.updateBloodStock(group, units).catch(() => {});
+        }
       } else if (event.target.id === "simMedsForm") {
         event.preventDefault();
         const form = event.target;
         const medId = form.dataset.medicineId;
         const med = serviceMedicines.find(m => m.id === medId);
+        const values = new FormData(form);
+        const avail = String(values.get("availability") || "Available");
+        const qty = String(values.get("quantity") || "In stock");
         if (med) {
-          const values = new FormData(form);
-          med.availability = String(values.get("availability") || "Available");
-          med.quantity = String(values.get("quantity") || "In stock");
+          med.availability = avail;
+          med.quantity = qty;
           med.updated = "Just now (Pharmacy verified)";
         }
         document.getElementById("overlays").innerHTML = "";
         render();
         showToast("Pharmacy inventory status updated.");
+
+        // Synchronize with CareSphere REST API
+        if (window.CareSphereAPI) {
+          window.CareSphereAPI.updateMedicineStock(medId, avail, qty).catch(() => {});
+        }
       }
     });
+
+    // API Status Indicator Wireup
+    function updateApiStatusUI(online, details) {
+      const dot = document.getElementById("apiStatusDot");
+      const text = document.getElementById("apiStatusText");
+      const badge = document.getElementById("apiStatusBadge");
+      if (!dot || !text || !badge) return;
+
+      if (online) {
+        dot.style.background = "#10B981";
+        dot.style.boxShadow = "0 0 6px rgba(16, 185, 129, 0.6)";
+        text.textContent = "API Online";
+        text.style.color = "#047857";
+        badge.style.background = "#ECFDF5";
+        badge.style.borderColor = "#A7F3D0";
+        badge.title = `Connected to CareSphere REST API (${details?.latency || 1}ms) · Click to re-check`;
+      } else {
+        dot.style.background = "#F59E0B";
+        dot.style.boxShadow = "none";
+        text.textContent = "Local Mode";
+        text.style.color = "#B45309";
+        badge.style.background = "#FFFBEB";
+        badge.style.borderColor = "#FDE68A";
+        badge.title = "Operating in local verified baseline mode · Click to re-check";
+      }
+    }
+
+    if (window.CareSphereAPI) {
+      window.CareSphereAPI.onStatusChange((online, details) => {
+        updateApiStatusUI(online, details);
+      });
+      document.getElementById("apiStatusBadge")?.addEventListener("click", () => {
+        showToast("Checking CareSphere backend connection...");
+        window.CareSphereAPI.checkHealth(2000).then(res => {
+          if (res.online) {
+            showToast(`CareSphere API connected (${res.latency}ms)`);
+          } else {
+            showToast("CareSphere backend offline. Continuing in local baseline mode.");
+          }
+        });
+      });
+    }
 
     document.getElementById("locationBadge")?.addEventListener("click", openCityModal);
     document.getElementById("closeCityModalBtn")?.addEventListener("click", closeCityModal);
