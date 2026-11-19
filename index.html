@@ -1408,6 +1408,9 @@
         if (typeof fetchBloodFromAPI === "function") {
           fetchBloodFromAPI(city.id, true);
         }
+        if (typeof fetchMedicinesFromAPI === "function") {
+          fetchMedicinesFromAPI(city.id, true);
+        }
       }
     }
     function updateCityBadge() {
@@ -1530,6 +1533,13 @@
         lastFetchTime: null
       },
       blood: {
+        loading: false,
+        error: null,
+        source: "baseline",
+        lastFetchedCity: null,
+        lastFetchTime: null
+      },
+      medicines: {
         loading: false,
         error: null,
         source: "baseline",
@@ -1768,12 +1778,84 @@
       render();
     }
 
-    const serviceMedicines = [
-      { id: "paracetamol", city: "bengaluru", name: "Paracetamol", strength: "500 mg", availability: "Available", quantity: "128 tablets", provider: "District General Hospital Pharmacy", providerType: "Hospital pharmacy", location: "Central District, Bengaluru", distance: 2.4, updated: "10 minutes ago" },
-      { id: "metformin", city: "bengaluru", name: "Metformin", strength: "500 mg", availability: "Limited", quantity: "12 strips", provider: "Jan Aushadhi Kendra", providerType: "Government pharmacy", location: "Central District, Bengaluru", distance: 3.2, updated: "18 minutes ago" },
-      { id: "amoxicillin", city: "bengaluru", name: "Amoxicillin", strength: "250 mg", availability: "Unavailable", quantity: "Currently unavailable", provider: "City Medical Centre Pharmacy", providerType: "Hospital pharmacy", location: "North District, Bengaluru", distance: 5.1, updated: "45 minutes ago" },
-      { id: "saline", city: "bengaluru", name: "Normal saline", strength: "0.9% · 500 ml", availability: "Available", quantity: "36 bottles", provider: "Care Supply Network", providerType: "Authorized supplier", location: "East District, Bengaluru", distance: 6.7, updated: "22 minutes ago" }
+    function normalizeMedicineFromApi(item) {
+      return {
+        id: item.id || `med-${item.name.toLowerCase().replace(/\s+/g, "-")}`,
+        city: item.cityId || item.city || "bengaluru",
+        name: item.name,
+        strength: item.strength || "",
+        dosageForm: item.dosageForm || "Oral",
+        availability: item.availability || "Available",
+        quantity: item.quantity || "In stock",
+        provider: item.provider || "Government Pharmacy",
+        providerType: item.providerType || "Government pharmacy",
+        location: item.location || "Central District, Bengaluru",
+        distance: typeof item.distanceKm === "number" ? item.distanceKm : (typeof item.distance === "number" ? item.distance : 2.5),
+        updated: item.updated || "Live API registry",
+        _source: "api"
+      };
+    }
+
+    async function fetchMedicinesFromAPI(cityId, force = false) {
+      if (!window.CareSphereAPI) return;
+      const targetCity = cityId || getActiveCity().id;
+
+      if (!force && apiResourceState.medicines.lastFetchedCity === targetCity && !apiResourceState.medicines.error && apiResourceState.medicines.source === "api") {
+        return;
+      }
+
+      apiResourceState.medicines.loading = true;
+      apiResourceState.medicines.error = null;
+      render();
+
+      try {
+        const res = await window.CareSphereAPI.getMedicines(targetCity);
+        apiResourceState.medicines.loading = false;
+        apiResourceState.medicines.lastFetchedCity = targetCity;
+
+        if (res.success && Array.isArray(res.data)) {
+          if (res.data.length > 0) {
+            const liveList = res.data.map(normalizeMedicineFromApi);
+            const otherCities = serviceMedicines.filter(m => m.city !== targetCity && m._source === "api");
+            serviceMedicines = [...otherCities, ...liveList];
+            apiResourceState.medicines.source = "api";
+            apiResourceState.medicines.lastFetchTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            apiResourceState.medicines.error = null;
+          } else {
+            const otherCities = serviceMedicines.filter(m => m.city !== targetCity);
+            serviceMedicines = [...otherCities];
+            apiResourceState.medicines.source = "api";
+            apiResourceState.medicines.lastFetchTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            apiResourceState.medicines.error = null;
+          }
+        } else if (res.offline) {
+          apiResourceState.medicines.source = "baseline";
+          apiResourceState.medicines.error = null;
+          const hasCityInState = serviceMedicines.some(m => m.city === targetCity);
+          if (!hasCityInState) {
+            serviceMedicines = baselineMedicines.map(m => ({ ...m }));
+          }
+        } else {
+          apiResourceState.medicines.error = res.error || "Failed to retrieve medicine inventory from server.";
+          apiResourceState.medicines.source = "baseline";
+        }
+      } catch (err) {
+        apiResourceState.medicines.loading = false;
+        apiResourceState.medicines.error = err.message || "Failed to communicate with medicine inventory API.";
+        apiResourceState.medicines.source = "baseline";
+      }
+
+      render();
+    }
+
+    const baselineMedicines = [
+      { id: "paracetamol", city: "bengaluru", name: "Paracetamol", strength: "500 mg", availability: "Available", quantity: "128 tablets", provider: "District General Hospital Pharmacy", providerType: "Hospital pharmacy", location: "Central District, Bengaluru", distance: 2.4, updated: "10 minutes ago", _source: "baseline" },
+      { id: "metformin", city: "bengaluru", name: "Metformin", strength: "500 mg", availability: "Limited", quantity: "12 strips", provider: "Jan Aushadhi Kendra", providerType: "Government pharmacy", location: "Central District, Bengaluru", distance: 3.2, updated: "18 minutes ago", _source: "baseline" },
+      { id: "amoxicillin", city: "bengaluru", name: "Amoxicillin", strength: "250 mg", availability: "Unavailable", quantity: "Currently unavailable", provider: "City Medical Centre Pharmacy", providerType: "Hospital pharmacy", location: "North District, Bengaluru", distance: 5.1, updated: "45 minutes ago", _source: "baseline" },
+      { id: "saline", city: "bengaluru", name: "Normal saline", strength: "0.9% · 500 ml", availability: "Available", quantity: "36 bottles", provider: "Care Supply Network", providerType: "Authorized supplier", location: "East District, Bengaluru", distance: 6.7, updated: "22 minutes ago", _source: "baseline" }
     ];
+
+    let serviceMedicines = baselineMedicines.map(m => ({ ...m }));
 
     const serviceAmbulances = [
       { id: "KA-01-AB-1234", city: "bengaluru", provider: "Karnataka 108 Emergency Network", phone: "+91 80 2200 1080", type: "Advanced Life Support", distance: 1.8, eta: 6, status: "Available" },
@@ -2829,9 +2911,10 @@
       const state = apiResourceState[moduleName] || apiResourceState.hospitals;
       const isDoctor = moduleName === "doctors";
       const isBlood = moduleName === "blood";
-      const refreshAction = isDoctor ? "refresh-doctors" : isBlood ? "refresh-blood" : "refresh-hospitals";
-      const retryAction = isDoctor ? "retry-doctors" : isBlood ? "retry-blood" : "retry-hospitals";
-      const entityLabel = isDoctor ? "Clinicians" : isBlood ? "Blood Inventory" : "Registry";
+      const isMedicine = moduleName === "medicines";
+      const refreshAction = isDoctor ? "refresh-doctors" : isBlood ? "refresh-blood" : isMedicine ? "refresh-medicines" : "refresh-hospitals";
+      const retryAction = isDoctor ? "retry-doctors" : isBlood ? "retry-blood" : isMedicine ? "retry-medicines" : "retry-hospitals";
+      const entityLabel = isDoctor ? "Clinicians" : isBlood ? "Blood Inventory" : isMedicine ? "Medicine Inventory" : "Registry";
 
       if (state.source === "api") {
         return `
@@ -3345,6 +3428,27 @@
             <div style="margin-top:12px;"><button class="button small" type="button" data-action="set-city-bengaluru">Switch to Bengaluru (Active Node)</button></div>
           </div>`;
       }
+
+      if (apiResourceState.medicines.loading) {
+        return `${sectionHeading("Medicine Availability", `Essential medicine inventory across registered pharmacies in ${city.name}, ${city.state}`)}${serviceBackLink()}${serviceFreshness("medicines")}
+          <div class="service-notice" style="display:flex;align-items:center;gap:14px;padding:28px 20px;">
+            <div style="width:22px;height:22px;border:3px solid #CBD5E1;border-top-color:#3478F6;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+            <div>
+              <h3 style="margin:0 0 4px;font-size:15px;color:#1E293B;">Retrieving live pharmacy inventory...</h3>
+              <p style="margin:0;color:#64748B;font-size:12.5px;">Contacting CareSphere Municipal Registry node for ${city.name}.</p>
+            </div>
+          </div>`;
+      }
+
+      const errorNotice = apiResourceState.medicines.error ? `
+        <div class="service-notice error-notice" style="border-left:4px solid #EF4444;background:#FEF2F2;color:#991B1B;padding:12px 16px;margin-bottom:14px;border-radius:10px;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <strong>Pharmacy Registry Sync Error:</strong> ${escapeHtml(apiResourceState.medicines.error)}
+            <div style="font-size:11.5px;color:#B91C1C;margin-top:2px;">Displaying local baseline medicine listings. Figures are illustrative and not live verified.</div>
+          </div>
+          <button class="button small" type="button" data-action="retry-medicines" style="margin-left:12px;">Retry</button>
+        </div>` : "";
+
       let medicines = serviceMedicines.filter(m => m.city === city.id);
       const query = (serviceState.medicineQuery || "").trim().toLowerCase();
       if (query) medicines = medicines.filter(m => `${m.name} ${m.strength} ${m.provider} ${m.providerType}`.toLowerCase().includes(query));
@@ -3373,6 +3477,10 @@
             <span>📍 ${m.location}</span>
             <span>🛣️ ${m.distance} km away</span>
           </div>
+          <div style="display:flex;justify-content:space-between;padding:10px 14px;border-radius:10px;background:#F8FAFD;border:1px solid #E2E8F0;font-size:12.5px;margin-top:12px;margin-bottom:12px;">
+            <span><strong>Stock Status:</strong> ${escapeHtml(m.quantity)}</span>
+            <span><strong>Data Source:</strong> ${m._source === "api" ? "<strong style='color:#059669;'>Live Registry API</strong>" : "<strong style='color:#D97706;'>Local Baseline (Sample)</strong>"}</span>
+          </div>
           <div class="resource-foot" style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;">
             <strong>${m.quantity}</strong>
             <span class="service-freshness">Updated ${m.updated}</span>
@@ -3385,7 +3493,13 @@
         </article>`;
       }).join("");
 
-      return `${sectionHeading("Medicine Availability", `Essential medicine inventory across registered pharmacies in ${city.name}, ${city.state}`)}${serviceBackLink()}${serviceFreshness()}
+      const emptyNotice = `
+        <div class="service-notice" style="text-align:center;padding:32px 16px;">
+          <p style="margin:0 0 12px;font-size:14px;color:#475569;">No medicines match your search criteria in ${city.name}.</p>
+          <button class="button small secondary" type="button" data-action="clear-medicine-filters">Reset Filters</button>
+        </div>`;
+
+      return `${sectionHeading("Medicine Availability", `Essential medicine inventory across registered pharmacies in ${city.name}, ${city.state}`)}${serviceBackLink()}${serviceFreshness("medicines")}${errorNotice}
         <div class="service-tools">
           <input type="search" value="${escapeHtml(serviceState.medicineQuery)}" placeholder="Search medicine name..." aria-label="Search medicine" data-service-filter="medicineQuery">
           <select aria-label="Provider type" data-service-filter="medicineProvider">
@@ -3394,13 +3508,13 @@
           <label class="service-freshness"><input type="checkbox" data-service-filter="medicineNearbyOnly" ${serviceState.medicineNearbyOnly ? "checked" : ""}> Nearby (&lt; 5 km)</label>
           <label class="service-freshness"><input type="checkbox" data-service-filter="medicineAvailableOnly" ${serviceState.medicineAvailableOnly ? "checked" : ""}> Available now</label>
         </div>
-        <div class="resource-list">${cards || '<div class="service-notice">No medicines match your search criteria.</div>'}</div>`;
+        <div class="resource-list">${cards || emptyNotice}</div>`;
     }
 
     function renderPharmacyDetails() {
       const medicine = serviceMedicines.find(item => item.id === serviceState.medicineId);
       if (!medicine) { serviceState.page = "medicines"; return renderMedicines(); }
-      return `${sectionHeading(medicine.provider, `Pharmacy listing in ${medicine.location}`)}${serviceBackLink("Back to medicines")}${serviceFreshness()}
+      return `${sectionHeading(medicine.provider, `Pharmacy listing in ${medicine.location}`)}${serviceBackLink("Back to medicines")}${serviceFreshness("medicines")}
         <section class="detail-panel">
           <div class="resource-head">
             <div>
@@ -4031,6 +4145,8 @@
           fetchDoctorsFromAPI(getActiveCity().id);
         } else if (serviceState.page === "blood") {
           fetchBloodFromAPI(getActiveCity().id);
+        } else if (serviceState.page === "medicines" || serviceState.page === "pharmacy") {
+          fetchMedicinesFromAPI(getActiveCity().id);
         }
         render();
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -4046,6 +4162,8 @@
           fetchDoctorsFromAPI(getActiveCity().id);
         } else if (serviceState.page === "blood") {
           fetchBloodFromAPI(getActiveCity().id);
+        } else if (serviceState.page === "medicines" || serviceState.page === "pharmacy") {
+          fetchMedicinesFromAPI(getActiveCity().id);
         }
         render();
       } else if (target.dataset.action === "change-city") openCityModal();
@@ -4081,6 +4199,21 @@
       }
       else if (target.dataset.action === "clear-blood-filters") {
         serviceState.bloodGroup = "All";
+        render();
+      }
+      else if (target.dataset.action === "refresh-medicines") {
+        showToast("Fetching live medicine inventory from municipal node...");
+        fetchMedicinesFromAPI(getActiveCity().id, true);
+      }
+      else if (target.dataset.action === "retry-medicines") {
+        showToast("Connecting to medicine inventory API...");
+        fetchMedicinesFromAPI(getActiveCity().id, true);
+      }
+      else if (target.dataset.action === "clear-medicine-filters") {
+        serviceState.medicineQuery = "";
+        serviceState.medicineProvider = "All";
+        serviceState.medicineNearbyOnly = false;
+        serviceState.medicineAvailableOnly = false;
         render();
       }
       else if (target.dataset.action === "clear-hospital-filters") {
@@ -4125,7 +4258,7 @@
       else if (target.dataset.action === "guide") { if (window.CareSphereGuide) window.CareSphereGuide.openDrawer(); }
       else if (target.dataset.action === "refresh") showToast("Your city healthcare resources are up to date.");
       else if (target.dataset.action === "resume-onboarding") resumeInlineOnboarding();
-      else if (target.dataset.action === "find-available-stock") { serviceState.medicineQuery = ""; serviceState.medicineAvailableOnly = true; serviceState.page = "medicines"; render(); }
+      else if (target.dataset.action === "find-available-stock") { serviceState.medicineQuery = ""; serviceState.medicineAvailableOnly = true; serviceState.page = "medicines"; fetchMedicinesFromAPI(getActiveCity().id); render(); }
     });
 
     document.getElementById("content").addEventListener("input", event => {
@@ -4309,6 +4442,9 @@
         if (online && apiResourceState.blood.source !== "api") {
           fetchBloodFromAPI(getActiveCity().id);
         }
+        if (online && apiResourceState.medicines.source !== "api") {
+          fetchMedicinesFromAPI(getActiveCity().id);
+        }
       });
       document.getElementById("apiStatusBadge")?.addEventListener("click", () => {
         showToast("Checking CareSphere backend connection...");
@@ -4318,6 +4454,7 @@
             fetchHospitalsFromAPI(getActiveCity().id, true);
             fetchDoctorsFromAPI(getActiveCity().id, true);
             fetchBloodFromAPI(getActiveCity().id, true);
+            fetchMedicinesFromAPI(getActiveCity().id, true);
           } else {
             showToast("CareSphere backend offline. Operating in local baseline mode.");
           }
@@ -4397,6 +4534,8 @@
             fetchDoctorsFromAPI(getActiveCity().id);
           } else if (serviceState.page === "blood") {
             fetchBloodFromAPI(getActiveCity().id);
+          } else if (serviceState.page === "medicines") {
+            fetchMedicinesFromAPI(getActiveCity().id);
           }
         }
       }

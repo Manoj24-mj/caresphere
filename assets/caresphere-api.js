@@ -209,7 +209,8 @@
      * 5. MEDICINE AVAILABILITY
      * ================================================================= */
     async getMedicines(city = "bengaluru", params = {}) {
-      const q = new URLSearchParams({ city, ...params }).toString();
+      const queryParams = typeof params === "string" ? { city, query: params } : { city, ...params };
+      const q = new URLSearchParams(queryParams).toString();
       return this.request(`/medicines?${q}`);
     }
 

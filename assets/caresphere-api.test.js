@@ -419,4 +419,127 @@ describe("CareSphere Frontend API Client", () => {
     assert.equal(res.status, 500);
     assert.equal(res.error, "Blood inventory service temporary failure");
   });
+
+  test("GET /api/medicines successfully retrieves and parses medicine inventory", async () => {
+    global.fetch = async (url) => {
+      assert.ok(url.includes("/api/medicines?city=bengaluru"));
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          message: "Found 4 medicines in bengaluru.",
+          data: [
+            {
+              id: "med-paracetamol",
+              cityId: "bengaluru",
+              name: "Paracetamol",
+              strength: "650 mg",
+              dosageForm: "Tablet",
+              availability: "Available",
+              quantity: "140 strips",
+              provider: "District General Hospital Pharmacy",
+              providerType: "Hospital pharmacy",
+              location: "District General Hospital, Central Wing",
+              distanceKm: 2.4,
+              updated: "10 mins ago"
+            }
+          ]
+        })
+      };
+    };
+
+    const res = await api.getMedicines("bengaluru");
+    assert.equal(res.success, true);
+    assert.equal(res.data.length, 1);
+    assert.equal(res.data[0].id, "med-paracetamol");
+    assert.equal(res.data[0].name, "Paracetamol");
+    assert.equal(res.data[0].strength, "650 mg");
+    assert.equal(res.data[0].availability, "Available");
+    assert.equal(res.data[0].provider, "District General Hospital Pharmacy");
+  });
+
+  test("GET /api/medicines supports query search and provider filtering", async () => {
+    global.fetch = async (url) => {
+      assert.ok(url.includes("query=Amoxicillin"));
+      assert.ok(url.includes("providerType=Retail+pharmacy") || url.includes("providerType=Retail%20pharmacy"));
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          message: "Found 1 medicines in bengaluru.",
+          data: [
+            {
+              id: "med-amoxicillin",
+              cityId: "bengaluru",
+              name: "Amoxicillin",
+              strength: "500 mg",
+              dosageForm: "Capsule",
+              availability: "Available",
+              quantity: "60 strips",
+              provider: "Jan Aushadhi Kendra - Indiranagar",
+              providerType: "Retail pharmacy",
+              location: "Indiranagar 100ft Road, Bengaluru",
+              distanceKm: 3.8,
+              updated: "25 mins ago"
+            }
+          ]
+        })
+      };
+    };
+
+    const res = await api.getMedicines("bengaluru", { query: "Amoxicillin", providerType: "Retail pharmacy" });
+    assert.equal(res.success, true);
+    assert.equal(res.data.length, 1);
+    assert.equal(res.data[0].name, "Amoxicillin");
+    assert.equal(res.data[0].providerType, "Retail pharmacy");
+  });
+
+  test("GET /api/medicines handles empty results for unonboarded cities", async () => {
+    global.fetch = async (url) => {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          message: "Found 0 medicines in mangaluru.",
+          data: []
+        })
+      };
+    };
+
+    const res = await api.getMedicines("mangaluru");
+    assert.equal(res.success, true);
+    assert.deepEqual(res.data, []);
+  });
+
+  test("GET /api/medicines handles backend offline network failure gracefully", async () => {
+    global.fetch = async () => {
+      throw new Error("connect ECONNREFUSED 127.0.0.1:5000");
+    };
+
+    const res = await api.getMedicines("bengaluru");
+    assert.equal(res.success, false);
+    assert.equal(res.offline, true);
+    assert.ok(res.error.includes("ECONNREFUSED"));
+  });
+
+  test("GET /api/medicines handles 500 server error cleanly", async () => {
+    global.fetch = async () => {
+      return {
+        ok: false,
+        status: 500,
+        json: async () => ({
+          success: false,
+          error: "Medicine inventory service temporary failure"
+        })
+      };
+    };
+
+    const res = await api.getMedicines("bengaluru");
+    assert.equal(res.success, false);
+    assert.equal(res.status, 500);
+    assert.equal(res.error, "Medicine inventory service temporary failure");
+  });
 });

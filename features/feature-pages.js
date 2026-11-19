@@ -108,9 +108,10 @@
 
   function medicineCard(medicine) {
     const pill3d = (window.CareSphere3D && window.CareSphere3D.svg) ? window.CareSphere3D.svg("capsules", { width: 36, height: 36 }) : "";
+    const sourceLabel = medicine._source === "api" ? "<strong style='color:#059669;'>Live Registry API</strong>" : "Sample baseline";
     return `<article class="resource-card"><div class="card-heading"><div style="display:flex;align-items:center;gap:12px">${pill3d}<div><h2>${escapeHtml(medicine.name)} ${escapeHtml(medicine.strength)}</h2><p>${escapeHtml(medicine.provider)}</p></div></div>${statusPill(medicine.availability)}</div>
-      <div class="resource-meta"><span>🏪 ${escapeHtml(medicine.providerType)}</span><span>📍 ${escapeHtml(medicine.location)}</span><span>🛣️ ${medicine.distance} km</span></div>
-      <div class="resource-meta"><strong>${escapeHtml(medicine.quantity)}</strong></div><p class="sample-update">Last sample update: ${escapeHtml(medicine.updated)}</p></article>`;
+      <div class="resource-meta"><span>🏪 ${escapeHtml(medicine.providerType)}</span><span>📍 ${escapeHtml(medicine.location)}</span><span>🛣️ ${medicine.distance} km</span><span>📡 ${sourceLabel}</span></div>
+      <div class="resource-meta"><strong>${escapeHtml(medicine.quantity)}</strong></div><p class="sample-update">${medicine._source === "api" ? "Live verified update: " : "Last sample update: "}${escapeHtml(medicine.updated)}</p></article>`;
   }
 
   function medicinesPage() {
@@ -126,8 +127,8 @@
       <select aria-label="Provider type" data-filter="medicineProvider">${["All","Government pharmacy","Hospital pharmacy","Authorized supplier"].map(value=>`<option ${state.medicineProvider===value?"selected":""}>${value}</option>`).join("")}</select>
       <label class="check-filter"><input type="checkbox" data-filter="medicineNearbyOnly" ${state.medicineNearbyOnly?"checked":""}> Nearby (within 5 km)</label>
       <label class="check-filter"><input type="checkbox" data-filter="medicineAvailableOnly" ${state.medicineAvailableOnly?"checked":""}> Available now</label></div>
-      <p class="result-count">${medicines.length} sample listing${medicines.length===1?"":"s"} match your filters</p><section class="card-grid">${medicines.map(medicineCard).join("") || '<p class="empty-state">No sample listings match. Try a different medicine or filter.</p>'}</section>
-      <p class="prototype-note notice-warning">Stock is illustrative. This is not medical advice; do not substitute a prescription without consulting a doctor or pharmacist.</p>`;
+      <p class="result-count">${medicines.length} medicine listing${medicines.length===1?"":"s"} match your filters</p><section class="card-grid">${medicines.map(medicineCard).join("") || '<p class="empty-state">No sample listings match. Try a different medicine or filter.</p>'}</section>
+      <p class="prototype-note notice-warning">Stock is illustrative unless synchronized with a live municipal pharmacy node. This is not medical advice; do not substitute a prescription without consulting a doctor or pharmacist.</p>`;
     return shell(titles.medicines[0],titles.medicines[1],content);
   }
 
@@ -420,6 +421,30 @@
               units: typeof b.units === "number" ? b.units : 0,
               updated: b.updated || "Live API registry",
               compatible: Array.isArray(b.compatible) ? b.compatible : [b.group],
+              _source: "api"
+            }));
+            render();
+          }
+        }).catch(() => {});
+      }
+    }).catch(() => {});
+  } else if (window.CareSphereAPI && feature === "medicines") {
+    window.CareSphereAPI.checkHealth(1500).then(health => {
+      if (health.online) {
+        window.CareSphereAPI.getMedicines("bengaluru").then(res => {
+          if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+            demo.medicines = res.data.map(m => ({
+              id: m.id,
+              city: m.cityId || "bengaluru",
+              name: m.name,
+              strength: m.strength,
+              availability: m.availability || "Available",
+              quantity: m.quantity || "In stock",
+              provider: m.provider || "Government Pharmacy",
+              providerType: m.providerType || "Government pharmacy",
+              location: m.location || "Central District, Bengaluru",
+              distance: typeof m.distanceKm === "number" ? m.distanceKm : (typeof m.distance === "number" ? m.distance : 2.5),
+              updated: m.updated || "Live API registry",
               _source: "api"
             }));
             render();
